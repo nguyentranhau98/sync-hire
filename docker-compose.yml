@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Next.js Web Application
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PYTHON_AGENT_URL=http://agent:8080
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - agent
+    networks:
+      - sync-hire-network
+
+  # Python AI Agent
+  agent:
+    build:
+      context: ./apps/agent
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=development
+    volumes:
+      - ./apps/agent:/app
+    networks:
+      - sync-hire-network
+
+networks:
+  sync-hire-network:
+    driver: bridge

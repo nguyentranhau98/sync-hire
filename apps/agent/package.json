@@ -1,0 +1,11 @@
+{
+  "name": "@sync-hire/agent",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "uv run python main.py",
+    "build": "echo 'Python agent - no build step'",
+    "start": "uv run python main.py",
+    "type-check": "uv run mypy main.py config.py"
+  }
+}

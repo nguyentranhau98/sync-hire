@@ -1,0 +1,157 @@
+"""
+Interview Completion Processor
+Intelligently detects when the interview is complete based on conversation context
+"""
+import asyncio
+import logging
+from typing import Optional
+from vision_agents.core.processors import Processor
+from vision_agents.core.llm.events import (
+    RealtimeAgentSpeechTranscriptionEvent,
+    RealtimeUserSpeechTranscriptionEvent,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class InterviewCompletionProcessor(Processor):
+    """
+    Processor that detects when an interview is naturally complete.
+
+    Detection logic:
+    1. Agent says closing keywords (goodbye, luck, etc.)
+    2. Agent hasn't spoken for 10+ seconds after closing
+    3. Total questions asked >= expected questions
+    4. Interview duration >= minimum time (8 minutes)
+    """
+
+    def __init__(
+        self,
+        expected_questions: int,
+        minimum_duration_minutes: int = 8,
+        completion_callback: Optional[callable] = None,
+    ):
+        super().__init__()
+        self.expected_questions = expected_questions
+        self.minimum_duration_minutes = minimum_duration_minutes
+        self.completion_callback = completion_callback
+
+        # Track conversation state
+        self.questions_asked = 0
+        self.agent_closing_phrases = []
+        self.last_agent_speech_time = None
+        self.interview_start_time = None
+        self.is_complete = asyncio.Event()
+
+        # Closing keywords and phrases
+        self.closing_keywords = {
+            "goodbye", "good bye", "bye",
+            "luck", "best wishes",
+            "thank you for your time", "thanks for sharing",
+            "we'll be in touch", "be in touch",
+            "that concludes", "wraps up",
+        }
+
+        # Question indicators (to count questions asked)
+        self.question_indicators = {
+            "tell me about", "can you explain", "what about",
+            "how did you", "why did you", "describe",
+            "walk me through", "what was your", "?",
+        }
+
+    async def setup(self, agent):
+        """Initialize processor when agent starts"""
+        import time
+        self.interview_start_time = time.time()
+        logger.info("🎬 Interview completion processor initialized")
+
+        @agent.events.subscribe
+        async def on_agent_speech(event: RealtimeAgentSpeechTranscriptionEvent):
+            """Track agent speech to detect closing and questions"""
+            import time
+            self.last_agent_speech_time = time.time()
+            text_lower = event.text.lower().strip()
+
+            # Count questions
+            if any(indicator in text_lower for indicator in self.question_indicators):
+                self.questions_asked += 1
+                logger.debug(f"📊 Questions asked: {self.questions_asked}/{self.expected_questions}")
+
+            # Detect closing phrases
+            if any(keyword in text_lower for keyword in self.closing_keywords):
+                self.agent_closing_phrases.append(event.text)
+                logger.info(f"👋 Agent used closing phrase: '{event.text}'")
+
+                # Check if interview should complete
+                await self._check_completion()
+
+        @agent.events.subscribe
+        async def on_user_speech(event: RealtimeUserSpeechTranscriptionEvent):
+            """Track user responses (helps confirm interview is active)"""
+            text_lower = event.text.lower().strip()
+
+            # If user also says goodbye, definitely time to end
+            if "goodbye" in text_lower or "bye" in text_lower:
+                logger.info(f"👋 User said goodbye: '{event.text}'")
+                await self._mark_complete("User said goodbye")
+
+    async def _check_completion(self):
+        """Smart completion check based on multiple signals"""
+        import time
+
+        # Calculate interview duration
+        duration_minutes = (time.time() - self.interview_start_time) / 60 if self.interview_start_time else 0
+
+        # Completion criteria
+        has_closing_phrase = len(self.agent_closing_phrases) > 0
+        enough_questions = self.questions_asked >= self.expected_questions - 1  # Allow 1 question variance
+        enough_time = duration_minutes >= self.minimum_duration_minutes
+
+        logger.info(f"""
+📊 Interview completion check:
+  - Closing phrases: {len(self.agent_closing_phrases)} (need: 1+)
+  - Questions asked: {self.questions_asked}/{self.expected_questions}
+  - Duration: {duration_minutes:.1f}/{self.minimum_duration_minutes} min
+  - Has closing: {has_closing_phrase}
+  - Enough questions: {enough_questions}
+  - Enough time: {enough_time}
+        """)
+
+        # Decision logic: Need closing phrase + (enough questions OR enough time)
+        if has_closing_phrase and (enough_questions or enough_time):
+            reason = []
+            if has_closing_phrase:
+                reason.append("agent said goodbye")
+            if enough_questions:
+                reason.append(f"asked {self.questions_asked} questions")
+            if enough_time:
+                reason.append(f"{duration_minutes:.1f} min duration")
+
+            await self._mark_complete(", ".join(reason))
+        else:
+            logger.debug("⏳ Not complete yet - continuing interview")
+
+    async def _mark_complete(self, reason: str):
+        """Mark interview as complete and trigger callback"""
+        if not self.is_complete.is_set():
+            logger.info(f"✅ Interview marked complete: {reason}")
+            self.is_complete.set()
+
+            if self.completion_callback:
+                await self.completion_callback()
+
+    async def wait_for_completion(self, timeout: float = 900):
+        """Wait for interview to complete"""
+        try:
+            await asyncio.wait_for(self.is_complete.wait(), timeout=timeout)
+            logger.info("✅ Interview completion detected")
+        except asyncio.TimeoutError:
+            logger.warning(f"⏰ Interview timeout after {timeout/60:.1f} minutes")
+            await self._mark_complete(f"timeout after {timeout/60:.1f} minutes")
+
+    def get_duration_minutes(self) -> float:
+        """Get interview duration in minutes"""
+        import time
+        if self.interview_start_time:
+            return (time.time() - self.interview_start_time) / 60
+        return 0

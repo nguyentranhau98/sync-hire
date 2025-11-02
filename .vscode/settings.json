@@ -1,0 +1,9 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/agent/.venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/apps/agent"
+  ],
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "basic"
+}
+
