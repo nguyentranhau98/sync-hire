@@ -3,11 +3,12 @@
  *
  * Apply CV to a job position with automatic interview question generation.
  * Generates 6-8 personalized questions based on CV + Job Description using Gemini.
+ * Falls back to demo CV data if no CV is uploaded (for demo purposes).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { generateInterviewQuestions } from "@/lib/backend/question-generator";
-import type { ExtractedJobData } from "@/lib/mock-data";
+import { getDemoCVExtraction, type ExtractedJobData } from "@/lib/mock-data";
 import { getStorage } from "@/lib/storage/storage-factory";
 import type { InterviewQuestions } from "@/lib/storage/storage-interface";
 import { generateStringHash } from "@/lib/utils/hash-utils";
@@ -41,16 +42,15 @@ export async function POST(request: NextRequest) {
 
     const storage = getStorage();
 
-    // Verify CV extraction exists
-    const cvData = await storage.getCVExtraction(cvId);
+    // Get CV extraction - fall back to demo CV if not found (for demo purposes)
+    let cvData = await storage.getCVExtraction(cvId);
+    let usingDemoCV = false;
+
     if (!cvData) {
-      return NextResponse.json(
-        {
-          error: "CV not found",
-          message: `No CV extraction found for ID: ${cvId}`,
-        },
-        { status: 400 },
-      );
+      // Use demo CV data as fallback for demo flow
+      cvData = getDemoCVExtraction();
+      usingDemoCV = true;
+      console.log("📋 Using demo CV data for question generation (no uploaded CV found)");
     }
 
     // Try to get JD extraction first (for jobs created via upload)
@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
           suggestedQuestionCount:
             interviewQuestions.metadata.suggestedQuestionCount,
           cached: false,
+          usingDemoCV,
         },
       },
       { status: 200 },

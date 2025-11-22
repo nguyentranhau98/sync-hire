@@ -55,6 +55,19 @@ export interface Job {
   status?: "DRAFT" | "ACTIVE" | "CLOSED";
 }
 
+export interface AIEvaluation {
+  overallScore: number;
+  categories: {
+    technicalKnowledge: number;
+    problemSolving: number;
+    communication: number;
+    experienceRelevance: number;
+  };
+  strengths: string[];
+  improvements: string[];
+  summary: string;
+}
+
 export interface Interview {
   id: string;
   jobId: string;
@@ -65,6 +78,8 @@ export interface Interview {
   score?: number;
   durationMinutes: number;
   createdAt: Date;
+  completedAt?: Date;
+  aiEvaluation?: AIEvaluation;
 }
 
 /**
@@ -1126,3 +1141,233 @@ export const mockJobs = getAllJobs();
 export const mockInterviews = interviews;
 export const mockApplicants = getAllApplicants();
 export const mockQuestions = jobs["job-1"]?.questions ?? [];
+
+// =============================================================================
+// Demo Fallback Data
+// =============================================================================
+
+/**
+ * Demo CV data for candidates who haven't uploaded their own CV
+ * Used to ensure the demo flow works without requiring actual uploads
+ */
+export const demoCVExtraction: ExtractedCVData = {
+  personalInfo: {
+    fullName: DEMO_USER_NAME,
+    email: DEMO_USER_EMAIL,
+    phone: "+1 (555) 123-4567",
+    location: "San Francisco, CA",
+    summary:
+      "Full-stack engineer with 5+ years of experience building scalable web applications. Passionate about clean code, user experience, and modern development practices. Experienced with React, Node.js, TypeScript, and cloud infrastructure.",
+    linkedinUrl: "https://linkedin.com/in/demo-candidate",
+    githubUrl: "https://github.com/demo-candidate",
+  },
+  experience: [
+    {
+      title: "Senior Software Engineer",
+      company: "TechStartup Inc.",
+      location: "San Francisco, CA",
+      startDate: "2022-01",
+      current: true,
+      description: [
+        "Led development of customer-facing dashboard serving 50K+ users",
+        "Architected microservices migration reducing latency by 40%",
+        "Mentored team of 3 junior developers on React best practices",
+        "Implemented CI/CD pipelines reducing deployment time by 60%",
+      ],
+    },
+    {
+      title: "Software Engineer",
+      company: "Digital Agency Co.",
+      location: "New York, NY",
+      startDate: "2019-06",
+      endDate: "2021-12",
+      current: false,
+      description: [
+        "Built responsive web applications for Fortune 500 clients",
+        "Developed RESTful APIs using Node.js and Express",
+        "Collaborated with design team to implement pixel-perfect UIs",
+        "Optimized database queries improving page load times by 30%",
+      ],
+    },
+    {
+      title: "Junior Developer",
+      company: "WebDev Solutions",
+      location: "Boston, MA",
+      startDate: "2018-01",
+      endDate: "2019-05",
+      current: false,
+      description: [
+        "Developed and maintained client websites using React and Vue.js",
+        "Participated in code reviews and agile development processes",
+        "Wrote unit tests achieving 80% code coverage",
+      ],
+    },
+  ],
+  education: [
+    {
+      degree: "Bachelor of Science",
+      field: "Computer Science",
+      institution: "University of California, Berkeley",
+      location: "Berkeley, CA",
+      startDate: "2014-09",
+      endDate: "2018-05",
+      current: false,
+      gpa: "3.7",
+    },
+  ],
+  skills: [
+    "React",
+    "TypeScript",
+    "Node.js",
+    "Python",
+    "PostgreSQL",
+    "MongoDB",
+    "AWS",
+    "Docker",
+    "Kubernetes",
+    "GraphQL",
+    "REST APIs",
+    "Git",
+    "CI/CD",
+    "Agile/Scrum",
+  ],
+  certifications: [
+    {
+      name: "AWS Solutions Architect Associate",
+      issuer: "Amazon Web Services",
+      issueDate: "2023-03",
+    },
+  ],
+  languages: [
+    { language: "English", proficiency: "Native" },
+    { language: "Spanish", proficiency: "Intermediate" },
+  ],
+  projects: [
+    {
+      name: "Open Source Dashboard",
+      description:
+        "React-based analytics dashboard with real-time data visualization",
+      technologies: ["React", "D3.js", "WebSocket", "Node.js"],
+      url: "https://github.com/demo-candidate/dashboard",
+    },
+  ],
+};
+
+/**
+ * Demo applicants for HR view when no real interviews exist
+ * These represent completed interviews with various scores
+ */
+export interface DemoApplicant {
+  id: string;
+  name: string;
+  email: string;
+  score: number;
+  status: "pending" | "approved" | "rejected";
+  completedAt: Date;
+  durationMinutes: number;
+  aiEvaluation?: AIEvaluation;
+}
+
+export const demoApplicants: DemoApplicant[] = [
+  {
+    id: "demo-applicant-1",
+    name: "Sarah Chen",
+    email: "sarah.chen@email.com",
+    score: 92,
+    status: "approved",
+    completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    durationMinutes: 28,
+    aiEvaluation: {
+      overallScore: 92,
+      categories: {
+        technicalKnowledge: 95,
+        problemSolving: 90,
+        communication: 92,
+        experienceRelevance: 91,
+      },
+      strengths: [
+        "Exceptional technical depth in React and TypeScript",
+        "Clear and structured communication style",
+        "Strong system design understanding",
+      ],
+      improvements: [
+        "Could elaborate more on leadership experience",
+      ],
+      summary:
+        "Outstanding candidate with excellent technical skills and communication. Highly recommended for the role.",
+    },
+  },
+  {
+    id: "demo-applicant-2",
+    name: "Marcus Johnson",
+    email: "marcus.j@email.com",
+    score: 78,
+    status: "pending",
+    completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    durationMinutes: 32,
+    aiEvaluation: {
+      overallScore: 78,
+      categories: {
+        technicalKnowledge: 82,
+        problemSolving: 75,
+        communication: 80,
+        experienceRelevance: 74,
+      },
+      strengths: [
+        "Solid foundation in backend development",
+        "Good problem-solving approach",
+        "Enthusiastic and eager to learn",
+      ],
+      improvements: [
+        "Could benefit from more frontend experience",
+        "Consider discussing scalability approaches in more depth",
+      ],
+      summary:
+        "Good candidate with solid fundamentals. May need some ramp-up time but shows potential for growth.",
+    },
+  },
+  {
+    id: "demo-applicant-3",
+    name: "Emily Rodriguez",
+    email: "emily.r@email.com",
+    score: 85,
+    status: "pending",
+    completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
+    durationMinutes: 30,
+    aiEvaluation: {
+      overallScore: 85,
+      categories: {
+        technicalKnowledge: 88,
+        problemSolving: 84,
+        communication: 86,
+        experienceRelevance: 82,
+      },
+      strengths: [
+        "Strong full-stack experience",
+        "Excellent problem decomposition skills",
+        "Good cultural fit indicators",
+      ],
+      improvements: [
+        "Could provide more specific metrics from past projects",
+      ],
+      summary:
+        "Strong candidate with well-rounded skills. Would be a valuable addition to the team.",
+    },
+  },
+];
+
+/**
+ * Get demo CV extraction data
+ * Returns the demo CV for candidates who haven't uploaded their own
+ */
+export function getDemoCVExtraction(): ExtractedCVData {
+  return demoCVExtraction;
+}
+
+/**
+ * Get demo applicants for a job
+ * Used when no real interviews exist for a job
+ */
+export function getDemoApplicants(): DemoApplicant[] {
+  return demoApplicants;
+}

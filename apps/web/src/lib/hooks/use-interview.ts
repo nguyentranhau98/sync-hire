@@ -79,3 +79,57 @@ export function useStartInterview() {
     retry: 1,
   });
 }
+
+import type { Interview } from "@/lib/mock-data";
+
+interface InterviewDetailsResponse {
+  success: boolean;
+  data: {
+    interview: Interview;
+    job: {
+      id: string;
+      title: string;
+      company: string;
+    } | null;
+    candidate: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+  };
+}
+
+interface UseInterviewDetailsOptions {
+  /** Enable polling every N milliseconds. Set to false to disable polling. */
+  refetchInterval?: number | false;
+}
+
+/**
+ * Hook for fetching a single interview with full details
+ * Supports polling for waiting on AI evaluation
+ */
+export function useInterviewDetails(
+  interviewId: string | null,
+  options: UseInterviewDetailsOptions = {},
+) {
+  const { refetchInterval = 3000 } = options;
+
+  return useQuery<InterviewDetailsResponse>({
+    queryKey: ["/api/interviews", interviewId],
+    queryFn: async () => {
+      if (!interviewId) {
+        throw new Error("Interview ID is required");
+      }
+      const response = await fetch(`/api/interviews/${interviewId}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch interview");
+      }
+      return response.json();
+    },
+    enabled: !!interviewId,
+    staleTime: 5 * 1000, // Consider data fresh for 5 seconds when polling
+    refetchInterval: interviewId ? refetchInterval : false,
+  });
+}
+
+export type { InterviewDetailsResponse };
