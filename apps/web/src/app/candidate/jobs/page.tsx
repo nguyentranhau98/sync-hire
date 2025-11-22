@@ -549,98 +549,74 @@ export default function CandidateJobListings() {
                                     {/* Buttons - Apply CV and Start Interview */}
                                     <div className="flex flex-col gap-2 sm:flex-row">
                                       {uiApplicationStates[application.id] !==
-                                        "applied" && (
-                                        <Button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            handleApplyToJob(
-                                              application.id,
-                                              application.job.id,
-                                            );
-                                          }}
-                                          disabled={
-                                            uiApplicationStates[
+                                        "applied" &&
+                                        application.status !== "COMPLETED" && (
+                                          <Button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              handleApplyToJob(
+                                                application.id,
+                                                application.job.id,
+                                              );
+                                            }}
+                                            disabled={
+                                              uiApplicationStates[
+                                                application.id
+                                              ] === "applying" || !activeCvId
+                                            }
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 gap-2 cursor-pointer"
+                                          >
+                                            {uiApplicationStates[
                                               application.id
-                                            ] === "applying" || !activeCvId
-                                          }
-                                          variant="outline"
-                                          size="sm"
-                                          className="flex-1 gap-2 cursor-pointer"
-                                        >
-                                          {uiApplicationStates[
-                                            application.id
-                                          ] === "applying" ? (
-                                            <>
-                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                              <span className="text-xs">
-                                                Generating...
-                                              </span>
-                                            </>
-                                          ) : uiApplicationStates[
-                                              application.id
-                                            ] === "error" ? (
-                                            <>
-                                              <span>Try Again</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <span>Apply CV</span>
-                                            </>
-                                          )}
-                                        </Button>
-                                      )}
+                                            ] === "applying" ? (
+                                              <>
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                <span className="text-xs">
+                                                  Generating...
+                                                </span>
+                                              </>
+                                            ) : uiApplicationStates[
+                                                application.id
+                                              ] === "error" ? (
+                                              <>
+                                                <span>Try Again</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span>Apply CV</span>
+                                              </>
+                                            )}
+                                          </Button>
+                                        )}
 
-                                      <Link
-                                        href={
-                                          application.status === "COMPLETED"
-                                            ? `/interview/${application.id}/results`
-                                            : `/interview/${application.id}`
-                                        }
-                                        className="flex-1"
-                                        onClick={(e) => {
-                                          if (
-                                            application.status !==
-                                              "COMPLETED" &&
-                                            uiApplicationStates[
-                                              application.id
-                                            ] !== "applied"
-                                          ) {
-                                            e.preventDefault();
+                                      {(uiApplicationStates[application.id] ===
+                                        "applied" ||
+                                        application.status === "COMPLETED") && (
+                                        <Link
+                                          href={
+                                            application.status === "COMPLETED"
+                                              ? `/interview/${application.id}/results`
+                                              : `/interview/${application.id}`
                                           }
-                                        }}
-                                      >
-                                        <Button
-                                          disabled={
-                                            application.status !==
-                                              "COMPLETED" &&
-                                            uiApplicationStates[
-                                              application.id
-                                            ] !== "applied"
-                                          }
-                                          size="sm"
-                                          className="w-full gap-2 cursor-pointer"
-                                          variant={
-                                            uiApplicationStates[
-                                              application.id
-                                            ] === "applied"
-                                              ? "default"
-                                              : "ghost"
-                                          }
+                                          className="flex-1"
                                         >
-                                          {uiApplicationStates[
-                                            application.id
-                                          ] === "applied" && (
+                                          <Button
+                                            size="sm"
+                                            className="w-full gap-2 cursor-pointer"
+                                          >
                                             <CheckCircle className="h-3.5 w-3.5" />
-                                          )}
-                                          {application.status === "COMPLETED"
-                                            ? "View Results"
-                                            : "Start Interview"}
-                                          {application.status !==
-                                            "COMPLETED" && (
-                                            <ArrowRightIcon className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </Link>
+                                            {application.status === "COMPLETED"
+                                              ? "View Results"
+                                              : "Start Interview"}
+                                            {application.status !==
+                                              "COMPLETED" && (
+                                              <ArrowRightIcon className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </Link>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
