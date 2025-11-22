@@ -55,6 +55,7 @@ export default function JobCreationPage() {
   const [editingResponsibilities, setEditingResponsibilities] = useState(false);
   const [editingRequirements, setEditingRequirements] = useState(false);
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+  const [skippedRequirements, setSkippedRequirements] = useState<Set<number>>(new Set());
 
   const [state, setState] = useState<JobCreationState>({
     extractedData: null,
@@ -62,6 +63,18 @@ export default function JobCreationPage() {
     questions: [],
     acceptedSuggestions: [],
   });
+
+  const toggleSkipRequirement = (index: number) => {
+    setSkippedRequirements((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
 
   const handleFileUpload = async (file: File) => {
     setIsLoading(true);
@@ -236,7 +249,7 @@ export default function JobCreationPage() {
           location: state.extractedData.location,
           employmentType: state.extractedData.employmentType,
           workArrangement: state.extractedData.workArrangement,
-          requirements: state.extractedData.requirements,
+          requirements: state.extractedData.requirements.filter((_, i) => !skippedRequirements.has(i)),
           responsibilities: state.extractedData.responsibilities,
           seniority: state.extractedData.seniority,
           customQuestions: includedQuestions,
@@ -513,13 +526,13 @@ export default function JobCreationPage() {
                             const isAccepted = suggestion && state.acceptedSuggestions.includes(suggestion.improved);
 
                             return (
-                              <div key={i} className="space-y-0">
+                              <div key={i}>
                                 <div
-                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                                    isExpanded ? "bg-amber-50 border border-amber-200" : "bg-muted/30 hover:bg-muted/50"
+                                  className={`flex items-start gap-3 p-2.5 rounded-md transition-colors ${
+                                    isExpanded ? "bg-primary/5" : "hover:bg-muted/50"
                                   }`}
                                 >
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">
+                                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center mt-0.5">
                                     {i + 1}
                                   </span>
                                   <span className="text-sm text-foreground leading-relaxed flex-1">{item}</span>
@@ -527,10 +540,10 @@ export default function JobCreationPage() {
                                     <button
                                       type="button"
                                       onClick={() => setExpandedSuggestion(isExpanded ? null : `resp-${i}`)}
-                                      className={`flex-shrink-0 p-1.5 rounded-md transition-colors ${
+                                      className={`flex-shrink-0 p-1 rounded transition-all ${
                                         isExpanded
-                                          ? "bg-amber-200 text-amber-700"
-                                          : "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                          ? "bg-primary text-primary-foreground"
+                                          : "text-primary/60 hover:text-primary hover:bg-primary/10"
                                       }`}
                                       title="AI has a suggestion"
                                     >
@@ -539,13 +552,11 @@ export default function JobCreationPage() {
                                   )}
                                 </div>
                                 {isExpanded && suggestion && (
-                                  <div className="ml-9 mt-1 p-3 bg-amber-50 border border-t-0 border-amber-200 rounded-b-lg">
-                                    <p className="text-xs text-amber-700 font-medium mb-2">AI Suggestion:</p>
-                                    <p className="text-sm text-foreground mb-3">{suggestion.improved}</p>
+                                  <div className="ml-8 mt-1 mb-2 p-3 rounded-lg bg-secondary/50 border border-border">
+                                    <p className="text-sm text-foreground mb-2">{suggestion.improved}</p>
                                     <div className="flex gap-2">
                                       <Button
                                         size="sm"
-                                        variant="default"
                                         className="h-7 text-xs"
                                         onClick={() => handleAcceptSuggestion(suggestion, "responsibilities")}
                                       >
@@ -558,7 +569,6 @@ export default function JobCreationPage() {
                                         className="h-7 text-xs"
                                         onClick={() => handleDismissSuggestion(suggestion)}
                                       >
-                                        <X className="w-3 h-3 mr-1" />
                                         Dismiss
                                       </Button>
                                     </div>
@@ -576,7 +586,7 @@ export default function JobCreationPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium text-foreground">
-                        Requirements ({state.extractedData.requirements.length})
+                        Requirements ({state.extractedData.requirements.length - skippedRequirements.size}{skippedRequirements.size > 0 ? ` / ${state.extractedData.requirements.length}` : ''})
                       </label>
                       <Button
                         variant="ghost"
@@ -621,41 +631,58 @@ export default function JobCreationPage() {
                             const suggestion = findSuggestionForItem(item);
                             const isExpanded = expandedSuggestion === `req-${i}`;
                             const isAccepted = suggestion && state.acceptedSuggestions.includes(suggestion.improved);
+                            const isSkipped = skippedRequirements.has(i);
 
                             return (
-                              <div key={i} className="space-y-0">
+                              <div key={i}>
                                 <div
-                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                                    isExpanded ? "bg-amber-50 border border-amber-200" : "bg-muted/30 hover:bg-muted/50"
+                                  className={`flex items-start gap-3 p-2.5 rounded-md transition-colors ${
+                                    isSkipped ? "opacity-50" : isExpanded ? "bg-primary/5" : "hover:bg-muted/50"
                                   }`}
                                 >
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">
+                                  <span className={`flex-shrink-0 w-5 h-5 rounded-full text-xs font-medium flex items-center justify-center mt-0.5 ${
+                                    isSkipped ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                                  }`}>
                                     {i + 1}
                                   </span>
-                                  <span className="text-sm text-foreground leading-relaxed flex-1">{item}</span>
-                                  {suggestion && !isAccepted && (
+                                  <span className={`text-sm leading-relaxed flex-1 ${
+                                    isSkipped ? "line-through text-muted-foreground" : "text-foreground"
+                                  }`}>{item}</span>
+                                  <div className="flex items-center gap-1">
+                                    {suggestion && !isAccepted && !isSkipped && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedSuggestion(isExpanded ? null : `req-${i}`)}
+                                        className={`flex-shrink-0 p-1 rounded transition-all ${
+                                          isExpanded
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-primary/60 hover:text-primary hover:bg-primary/10"
+                                        }`}
+                                        title="AI has a suggestion"
+                                      >
+                                        <Sparkles className="w-4 h-4" />
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
-                                      onClick={() => setExpandedSuggestion(isExpanded ? null : `req-${i}`)}
-                                      className={`flex-shrink-0 p-1.5 rounded-md transition-colors ${
-                                        isExpanded
-                                          ? "bg-amber-200 text-amber-700"
-                                          : "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                      onClick={() => toggleSkipRequirement(i)}
+                                      className={`flex-shrink-0 p-1 rounded transition-all ${
+                                        isSkipped
+                                          ? "text-primary hover:bg-primary/10"
+                                          : "text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
                                       }`}
-                                      title="AI has a suggestion"
+                                      title={isSkipped ? "Restore requirement" : "Skip requirement"}
                                     >
-                                      <Sparkles className="w-4 h-4" />
+                                      <X className="w-4 h-4" />
                                     </button>
-                                  )}
+                                  </div>
                                 </div>
-                                {isExpanded && suggestion && (
-                                  <div className="ml-9 mt-1 p-3 bg-amber-50 border border-t-0 border-amber-200 rounded-b-lg">
-                                    <p className="text-xs text-amber-700 font-medium mb-2">AI Suggestion:</p>
-                                    <p className="text-sm text-foreground mb-3">{suggestion.improved}</p>
+                                {isExpanded && suggestion && !isSkipped && (
+                                  <div className="ml-8 mt-1 mb-2 p-3 rounded-lg bg-secondary/50 border border-border">
+                                    <p className="text-sm text-foreground mb-2">{suggestion.improved}</p>
                                     <div className="flex gap-2">
                                       <Button
                                         size="sm"
-                                        variant="default"
                                         className="h-7 text-xs"
                                         onClick={() => handleAcceptSuggestion(suggestion, "requirements")}
                                       >
@@ -668,7 +695,6 @@ export default function JobCreationPage() {
                                         className="h-7 text-xs"
                                         onClick={() => handleDismissSuggestion(suggestion)}
                                       >
-                                        <X className="w-3 h-3 mr-1" />
                                         Dismiss
                                       </Button>
                                     </div>
