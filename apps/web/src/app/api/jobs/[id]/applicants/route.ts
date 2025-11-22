@@ -3,9 +3,11 @@
  *
  * Returns all interviews/applicants for a specific job
  * Combines interview data with user/CV data to provide applicant details
+ * Falls back to demo applicants if no real interviews exist (for demo purposes)
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getDemoApplicants } from "@/lib/mock-data";
 import { getStorage } from "@/lib/storage/storage-factory";
 
 export async function GET(
@@ -31,8 +33,11 @@ export async function GET(
       (interview) => interview.jobId === jobId,
     );
 
+    // Track if we're using demo data
+    let usingDemoData = false;
+
     // Enrich interview data with user/CV information
-    const applicants = await Promise.all(
+    const realApplicants = await Promise.all(
       jobInterviews.map(async (interview) => {
         // Try to get user data
         const user = await storage.getUser(interview.candidateId);
@@ -56,12 +61,37 @@ export async function GET(
           score: interview.score,
           durationMinutes: interview.durationMinutes,
           createdAt: interview.createdAt,
+          completedAt: interview.completedAt,
+          aiEvaluation: interview.aiEvaluation,
           // CV-based data for richer display
           skills: cvData?.skills ?? [],
           experience: cvData?.experience ?? [],
         };
       }),
     );
+
+    // If no real applicants, use demo applicants for demo purposes
+    let applicants = realApplicants;
+    if (realApplicants.length === 0) {
+      usingDemoData = true;
+      const demoApplicants = getDemoApplicants();
+      applicants = demoApplicants.map((demo) => ({
+        id: demo.id,
+        interviewId: demo.id,
+        candidateId: demo.id,
+        name: demo.name,
+        email: demo.email,
+        status: "COMPLETED" as const,
+        score: demo.score,
+        durationMinutes: demo.durationMinutes,
+        createdAt: demo.completedAt,
+        completedAt: demo.completedAt,
+        aiEvaluation: demo.aiEvaluation,
+        skills: [],
+        experience: [],
+      }));
+      console.log(`📋 Using demo applicants for job ${jobId} (no real interviews found)`);
+    }
 
     // Sort by score (completed first, then by score descending)
     applicants.sort((a, b) => {
@@ -98,6 +128,7 @@ export async function GET(
                 )
               : null,
         },
+        usingDemoData,
       },
     });
   } catch (error) {
