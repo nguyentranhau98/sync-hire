@@ -108,10 +108,18 @@ app.add_middleware(
 
 
 # Request/Response models
+class Question(BaseModel):
+    """Individual interview question"""
+    id: str
+    text: str
+    type: str
+    duration: int
+
+
 class JoinInterviewRequest(BaseModel):
     """Request to join an interview"""
     callId: str
-    questions: List[str]
+    questions: List[Question]
     candidateName: str
     jobTitle: str
 
@@ -421,7 +429,7 @@ async def health_check():
 
 async def _run_interview_background(
     call_id: str,
-    questions: List[str],
+    questions: List[Question],
     candidate_name: str,
     job_title: str
 ):
@@ -432,9 +440,13 @@ async def _run_interview_background(
     """
     try:
         logger.info(f"🎯 Background task: Starting interview for {candidate_name}")
+
+        # Extract question text from Question objects
+        question_texts = [q.text for q in questions]
+
         await interview_agent.join_interview(
             call_id=call_id,
-            questions=questions,
+            questions=question_texts,
             candidate_name=candidate_name,
             job_title=job_title
         )
@@ -465,6 +477,8 @@ async def join_interview(request: JoinInterviewRequest, background_tasks: Backgr
 
     # Add interview to background tasks
     logger.info(f"➕ Adding interview to background tasks for {request.candidateName}")
+    logger.info(f"   Questions: {len(request.questions)} question(s)")
+
     background_tasks.add_task(
         _run_interview_background,
         call_id=request.callId,
