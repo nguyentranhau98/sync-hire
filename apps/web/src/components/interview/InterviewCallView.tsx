@@ -611,11 +611,12 @@ function InterviewCallContent({
               ))
             )}
 
-            {/* Typing indicator when agent is processing */}
-            {agentConnected && (
+            {/* Typing indicator - only show when AI is speaking */}
+            {isAISpeaking && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="flex gap-4"
               >
                 <div className="h-8 w-8 rounded-lg shrink-0 overflow-hidden border border-border relative">
