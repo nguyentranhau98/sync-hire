@@ -1,6 +1,6 @@
 "use client";
 
-import { mockJobs } from "@/lib/mock-data";
+import { getJobById } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,27 @@ import { useState } from "react";
 
 export default function HRJDDetail() {
   const params = useParams();
-  const job = mockJobs.find(j => j.id === params?.id) || mockJobs[0];
+  const job = getJobById(params?.id as string);
+
+  if (!job) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-8 px-4 py-8">
+        <Link href="/hr/jobs">
+          <Button variant="ghost" className="pl-0 hover:pl-2 transition-all text-muted-foreground hover:text-foreground w-fit -ml-3 h-auto py-0 gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Jobs
+          </Button>
+        </Link>
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-semibold text-foreground mb-2">Job not found</h2>
+          <p className="text-muted-foreground mb-4">The job you're looking for doesn't exist.</p>
+          <Link href="/hr/jobs">
+            <Button>Return to Jobs</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const [questions, setQuestions] = useState(job.questions);
 
   return (

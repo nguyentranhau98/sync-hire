@@ -106,11 +106,8 @@ export interface JobDescriptionVersion {
   originalText: string;
   extractedData: ExtractedJobData;
   aiSuggestions: Array<{
-    category: string;
-    text: string;
     original: string;
     improved: string;
-    tag: string;
   }>;
   acceptedChanges: Array<{
     category: string;
@@ -123,11 +120,8 @@ export interface JobDescriptionVersion {
 
 export interface JDSuggestion {
   id: string;
-  category: "inclusiveness" | "clarity" | "skills" | "seniority";
-  text: string;
   original: string;
   improved: string;
-  tag: string;
   accepted: boolean;
 }
 

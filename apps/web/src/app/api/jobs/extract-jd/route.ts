@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const storage = getStorage();
     const processor = new JobDescriptionProcessor(storage);
 
-    const { hash, extractedData, cached } = await processor.processFile(
+    const { hash, extractedData, aiSuggestions, aiQuestions, cached } = await processor.processFile(
       buffer,
       file.name
     );
@@ -56,6 +56,8 @@ export async function POST(request: NextRequest) {
         data: {
           id: hash,
           extractedData,
+          aiSuggestions,
+          aiQuestions,
           cached,
         },
       },

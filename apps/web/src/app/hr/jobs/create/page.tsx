@@ -6,36 +6,48 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Plus, Trash2, Check, Eye, AlertCircle } from "lucide-react";
 import { DocumentUploadSection } from "@/components/job-creation/DocumentUploadSection";
-import type { ExtractedJobData, CustomQuestion, QuestionType } from "@/lib/mock-data";
+import type { ExtractedJobData } from "@/lib/mock-data";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+interface AIQuestion {
+  content: string;
+  reason: string;
+}
+
+interface AISuggestion {
+  original: string;
+  improved: string;
+}
 
 interface JobCreationState {
   extractedData: ExtractedJobData | null;
-  extractionHash?: string;
-  originalText: string;
+  aiSuggestions: AISuggestion[];
+  aiQuestions: AIQuestion[];
   customQuestions: Array<{
-    type: QuestionType;
     content: string;
     required: boolean;
     order: number;
-    options?: string[];
-    scoringConfig?: { type: string; min: number; max: number };
   }>;
+  acceptedSuggestions: string[]; // Track accepted suggestions by index
+  createdJob?: any; // Store created job data
 }
 
 export default function JobCreationPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null);
 
   const [state, setState] = useState<JobCreationState>({
     extractedData: null,
-    originalText: "",
+    aiSuggestions: [],
+    aiQuestions: [],
     customQuestions: [],
+    acceptedSuggestions: [],
   });
 
   const handleFileUpload = async (file: File) => {
@@ -61,12 +73,13 @@ export default function JobCreationPage() {
       setState((prev) => ({
         ...prev,
         extractedData: result.data.extractedData,
+        aiSuggestions: result.data.aiSuggestions,
+        aiQuestions: result.data.aiQuestions,
         extractionHash: result.data.id,
         originalText: file.name,
       }));
 
       toast.success("Job description extracted successfully!");
-      setCurrentStep(2);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Upload failed";
@@ -90,18 +103,63 @@ export default function JobCreationPage() {
     }));
   };
 
-  const handleAddQuestion = () => {
+  const handleAcceptSuggestion = (index: number) => {
+    setState((prev) => {
+      const suggestion = prev.aiSuggestions[index];
+      const newAcceptedSuggestions = [...prev.acceptedSuggestions, suggestion.improved];
+
+      return {
+        ...prev,
+        acceptedSuggestions: newAcceptedSuggestions,
+      };
+    });
+
+    toast.success("Suggestion accepted!");
+  };
+
+  const handleAddAIQuestion = (aiQuestion: AIQuestion) => {
     setState((prev) => ({
       ...prev,
       customQuestions: [
         ...prev.customQuestions,
         {
-          type: "SHORT_ANSWER",
+          content: aiQuestion.content,
+          required: false,
+          order: prev.customQuestions.length,
+        },
+      ],
+    }));
+
+    toast.success("Question added to custom questions!");
+  };
+
+  const handleAddCustomQuestion = () => {
+    setState((prev) => ({
+      ...prev,
+      customQuestions: [
+        ...prev.customQuestions,
+        {
           content: "",
           required: false,
           order: prev.customQuestions.length,
         },
       ],
+    }));
+  };
+
+  const handleQuestionChange = (index: number, field: string, value: any) => {
+    setState((prev) => ({
+      ...prev,
+      customQuestions: prev.customQuestions.map((q, i) =>
+        i === index ? { ...q, [field]: value } : q
+      ),
+    }));
+  };
+
+  const handleDeleteQuestion = (index: number) => {
+    setState((prev) => ({
+      ...prev,
+      customQuestions: prev.customQuestions.filter((_, i) => i !== index),
     }));
   };
 
@@ -126,9 +184,10 @@ export default function JobCreationPage() {
           responsibilities: state.extractedData.responsibilities,
           seniority: state.extractedData.seniority,
           customQuestions: state.customQuestions,
-          originalJDText: state.originalText,
+          originalJDText: JSON.stringify(state.extractedData, null, 2),
           company: "Company",
           employerId: "employer-1",
+          aiSuggestions: state.acceptedSuggestions,
         }),
       });
 
@@ -138,8 +197,9 @@ export default function JobCreationPage() {
       }
 
       const result = await response.json();
+      setState(prev => ({ ...prev, createdJob: result.data }));
+      setCreatedJobId(result.data.id);
       toast.success("Job posted successfully!");
-      router.push(`/hr/jobs/${result.data.id}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to create job";
@@ -149,41 +209,135 @@ export default function JobCreationPage() {
     }
   };
 
+
+  if (createdJobId && state.createdJob) {
+    // Job creation confirmation view
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Job Created Successfully!
+            </h1>
+            <p className="text-muted-foreground">
+              Your job posting has been published and is now live
+            </p>
+          </div>
+
+          <Card className="p-8">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">
+                  {state.createdJob.title}
+                </h2>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>
+                    <span className="ml-2 font-medium">{state.extractedData?.location}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="ml-2 font-medium">{state.extractedData?.employmentType}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Seniority:</span>
+                    <span className="ml-2 font-medium">{state.extractedData?.seniority}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className="ml-2 font-medium text-green-600">{state.createdJob.status}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Job Description</h3>
+                <div className="bg-secondary/20 p-4 rounded-lg">
+                  <p className="whitespace-pre-wrap">
+                    {state.extractedData?.responsibilities.join("\n")}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Requirements</h3>
+                <div className="bg-secondary/20 p-4 rounded-lg">
+                  <ul className="list-disc list-inside space-y-1">
+                    {state.extractedData?.requirements.map((req, index) => (
+                      <li key={index}>{req}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {state.customQuestions.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Screening Questions ({state.customQuestions.length})</h3>
+                  <div className="space-y-2">
+                    {state.customQuestions.map((question, index) => (
+                      <div key={index} className="bg-secondary/20 p-3 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{question.content}</p>
+                            <div className="flex gap-2 mt-1">
+                              {question.required && <Badge variant="secondary">Required</Badge>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                <Button
+                  onClick={() => router.push(`/hr/jobs/${createdJobId}`)}
+                  className="flex-1"
+                >
+                  View Job Details
+                </Button>
+                <Button
+                  onClick={() => router.push("/hr/jobs/create")}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Create Another Job
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Create New Job Posting
           </h1>
           <p className="text-muted-foreground">
-            Step {currentStep} of 5
+            Upload a job description and customize your posting
           </p>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8 flex gap-2">
-          {Array.from({ length: 5 }, (_, i) => i + 1).map((step) => (
-            <div
-              key={step}
-              className={`h-2 flex-1 rounded-full transition-colors ${
-                step <= currentStep ? "bg-blue-600" : "bg-secondary"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Steps */}
-        <Card className="p-8">
-          {currentStep === 1 && (
+        {!state.extractedData ? (
+          // Upload step
+          <Card className="p-8">
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-semibold text-foreground mb-2">
                   Upload Job Description
                 </h2>
                 <p className="text-muted-foreground">
-                  Upload a PDF, DOCX, or TXT file with your job description
+                  Upload a PDF file with your job description to get started
                 </p>
               </div>
 
@@ -193,189 +347,267 @@ export default function JobCreationPage() {
                 error={uploadError}
               />
             </div>
-          )}
-
-          {currentStep === 2 && state.extractedData && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-2">
-                  Review Extracted Data
-                </h2>
-                <p className="text-muted-foreground">
-                  Review and edit the extracted job information
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground">
-                    Job Title
-                  </label>
-                  <Input
-                    value={state.extractedData.title}
-                    onChange={(e) =>
-                      handleExtractedDataChange("title", e.target.value)
-                    }
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground">
-                    Location
-                  </label>
-                  <Input
-                    value={state.extractedData.location}
-                    onChange={(e) =>
-                      handleExtractedDataChange("location", e.target.value)
-                    }
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground">
-                    Seniority Level
-                  </label>
-                  <Input
-                    value={state.extractedData.seniority}
-                    onChange={(e) =>
-                      handleExtractedDataChange("seniority", e.target.value)
-                    }
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-foreground">
-                    Employment Type
-                  </label>
-                  <Input
-                    value={state.extractedData.employmentType}
-                    onChange={(e) =>
-                      handleExtractedDataChange(
-                        "employmentType",
-                        e.target.value
-                      )
-                    }
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-2">
-                  AI Suggestions
-                </h2>
-                <p className="text-muted-foreground">
-                  Review AI-powered suggestions to improve your job posting
-                </p>
-              </div>
-              <p className="text-center text-muted-foreground">
-                AI suggestions coming soon
-              </p>
-            </div>
-          )}
-
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-2">
-                  Custom Questions
-                </h2>
-                <p className="text-muted-foreground">
-                  Add screening questions for applicants
-                </p>
-              </div>
-
-              <Button onClick={handleAddQuestion} variant="outline">
-                + Add Question
-              </Button>
-
-              {state.customQuestions.length > 0 && (
+          </Card>
+        ) : (
+          // Unified Extracted Data view
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Main content area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Extracted Data Section */}
+              <Card className="p-6">
                 <div className="space-y-4">
-                  {state.customQuestions.map((_, index) => (
-                    <Card key={index} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          Question {index + 1}
-                        </span>
-                        <Button variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Job Details</h2>
+                    <Badge variant="outline">Extracted from PDF</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Job Title</label>
+                      <Input
+                        value={state.extractedData.title}
+                        onChange={(e) =>
+                          handleExtractedDataChange("title", e.target.value)
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Location</label>
+                      <Input
+                        value={state.extractedData.location}
+                        onChange={(e) =>
+                          handleExtractedDataChange("location", e.target.value)
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Seniority Level</label>
+                      <Input
+                        value={state.extractedData.seniority}
+                        onChange={(e) =>
+                          handleExtractedDataChange("seniority", e.target.value)
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Employment Type</label>
+                      <Input
+                        value={state.extractedData.employmentType}
+                        onChange={(e) =>
+                          handleExtractedDataChange("employmentType", e.target.value)
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Responsibilities</label>
+                    <Textarea
+                      value={state.extractedData.responsibilities.join("\n")}
+                      onChange={(e) =>
+                        handleExtractedDataChange("responsibilities", e.target.value.split("\n"))
+                      }
+                      className="mt-1"
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Requirements</label>
+                    <Textarea
+                      value={state.extractedData.requirements.join("\n")}
+                      onChange={(e) =>
+                        handleExtractedDataChange("requirements", e.target.value.split("\n"))
+                      }
+                      className="mt-1"
+                      rows={4}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+              </Card>
 
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-2">
-                  Preview & Publish
-                </h2>
-                <p className="text-muted-foreground">
-                  Review your job posting before publishing
-                </p>
-              </div>
+              {/* AI Suggestions Section */}
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold">AI Suggestions</h2>
 
-              <Card className="p-6 bg-secondary/20 space-y-4">
-                {state.extractedData && (
-                  <>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Title</p>
-                      <p className="text-lg font-semibold">
-                        {state.extractedData.title}
-                      </p>
+                  {state.aiSuggestions.length === 0 ? (
+                    <p className="text-muted-foreground">No suggestions available</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {state.aiSuggestions.map((suggestion, index) => (
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-sm text-muted-foreground">
+                              Suggestion
+                            </span>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAcceptSuggestion(index)}
+                                disabled={state.acceptedSuggestions.includes(suggestion.improved)}
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <p><strong>Original:</strong> {suggestion.original}</p>
+                            <p><strong>Improved:</strong> {suggestion.improved}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Custom Questions Section */}
+              <Card className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Screening Questions</h2>
+                    <Button onClick={handleAddCustomQuestion} size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Question
+                    </Button>
+                  </div>
+
+                  {/* AI Suggested Questions */}
+                  {state.aiQuestions.length > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Location</p>
-                      <p className="text-lg font-semibold">
-                        {state.extractedData.location}
-                      </p>
+                      <h3 className="text-lg font-medium mb-3">AI-Recommended Questions</h3>
+                      <div className="space-y-2">
+                        {state.aiQuestions.map((question, index) => (
+                          <div key={index} className="border rounded-lg p-3 bg-blue-50/50">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium">{question.content}</p>
+                                <div className="flex gap-2 mt-1">
+                                  <span className="text-xs text-muted-foreground">{question.reason}</span>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAddAIQuestion(question)}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </>
-                )}
+                  )}
+
+                  {/* Custom Questions */}
+                  <div>
+                    <h3 className="text-lg font-medium mb-3">Custom Questions</h3>
+                    {state.customQuestions.length === 0 ? (
+                      <p className="text-muted-foreground">No custom questions added yet</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {state.customQuestions.map((question, index) => (
+                          <div key={index} className="border rounded-lg p-3">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  placeholder="Question text"
+                                  value={question.content}
+                                  onChange={(e) => handleQuestionChange(index, "content", e.target.value)}
+                                />
+                                <div className="flex gap-2 items-center">
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`required-${index}`}
+                                      checked={question.required}
+                                      onCheckedChange={(checked) =>
+                                        handleQuestionChange(index, "required", checked)
+                                      }
+                                    />
+                                    <label htmlFor={`required-${index}`} className="text-sm">
+                                      Required
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteQuestion(index)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </Card>
             </div>
-          )}
 
-          {/* Navigation */}
-          <div className="flex gap-4 mt-8">
-            {currentStep > 1 && (
-              <Button
-                onClick={() => setCurrentStep((prev) => (prev - 1) as Step)}
-                variant="outline"
-              >
-                Previous
-              </Button>
-            )}
-            {currentStep < 5 && (
-              <Button
-                onClick={() => setCurrentStep((prev) => (prev + 1) as Step)}
-                className="ml-auto"
-              >
-                Next
-              </Button>
-            )}
-            {currentStep === 5 && (
-              <Button
-                onClick={handlePublish}
-                disabled={isLoading}
-                className="ml-auto"
-              >
-                {isLoading ? "Publishing..." : "Publish Job"}
-              </Button>
-            )}
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Live Preview */}
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Eye className="w-4 h-4" />
+                  <h3 className="font-semibold">Live Preview</h3>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Title:</span>
+                    <p className="font-medium">{state.extractedData.title || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>
+                    <p className="font-medium">{state.extractedData.location || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Questions:</span>
+                    <p className="font-medium">
+                      {state.customQuestions.length} custom, {state.aiQuestions.length} AI suggested
+                    </p>
+                  </div>
+                  {state.acceptedSuggestions.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Improvements:</span>
+                      <p className="font-medium">{state.acceptedSuggestions.length} applied</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Actions */}
+              <Card className="p-6">
+                <Button
+                  onClick={handlePublish}
+                  disabled={isLoading || !state.extractedData.title || !state.extractedData.location}
+                  className="w-full"
+                >
+                  {isLoading ? "Creating Job..." : "Create Job Posting"}
+                </Button>
+                {!state.extractedData.title || !state.extractedData.location ? (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    <AlertCircle className="w-3 h-3 inline mr-1" />
+                    Title and location are required
+                  </p>
+                ) : null}
+              </Card>
+            </div>
           </div>
-        </Card>
+        )}
       </div>
     </div>
   );
