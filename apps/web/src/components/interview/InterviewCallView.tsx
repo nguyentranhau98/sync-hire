@@ -2,6 +2,7 @@
 
 /**
  * Active interview call view with video
+ * Updated to match dark theme design system
  */
 import { useEffect, useState } from 'react';
 import {
@@ -11,6 +12,8 @@ import {
   StreamCall,
   useCallStateHooks,
 } from '@stream-io/video-react-sdk';
+import { Badge } from '@/components/ui/badge';
+import { BrainCircuit, Video, Loader2 } from 'lucide-react';
 
 interface InterviewCallViewProps {
   call: Call;
@@ -24,25 +27,21 @@ interface InterviewCallViewProps {
 function AgentStatusBanner({ status }: { status: 'waiting' | 'connected' }) {
   if (status === 'connected') {
     return (
-      <div className="bg-green-600 px-6 py-3">
-        <div className="flex items-center justify-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-white animate-pulse"></div>
-          <p className="text-sm font-medium text-white">
-            AI Interviewer Connected
-          </p>
-        </div>
+      <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 border-b border-green-500/20">
+        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-sm font-medium text-green-400">
+          AI Interviewer Connected
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="bg-yellow-600 px-6 py-3">
-      <div className="flex items-center justify-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-white animate-pulse"></div>
-        <p className="text-sm font-medium text-white">
-          Waiting for AI Interviewer to join...
-        </p>
-      </div>
+    <div className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+      <Loader2 className="h-4 w-4 text-yellow-400 animate-spin" />
+      <span className="text-sm font-medium text-yellow-400">
+        Waiting for AI Interviewer...
+      </span>
     </div>
   );
 }
@@ -78,25 +77,40 @@ function AgentMonitor() {
 export function InterviewCallView({ call, interviewId }: InterviewCallViewProps) {
   return (
     <StreamCall call={call}>
-      <div className="str-video flex h-screen w-full flex-col bg-gray-900">
+      <div className="str-video flex h-screen w-full flex-col bg-background">
         {/* Header */}
-        <div className="flex-shrink-0 bg-gray-800 px-6 py-4">
-          <h1 className="text-xl font-bold text-white">AI Interview Session</h1>
-          <p className="text-sm text-gray-400">
-            Interview ID: {interviewId}
-          </p>
+        <div className="flex-shrink-0 px-6 py-4 border-b border-white/5 bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                <Video className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                  AI Interview Session
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Interview #{interviewId}
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1.5">
+              <BrainCircuit className="h-3.5 w-3.5" />
+              AI Powered
+            </Badge>
+          </div>
         </div>
 
         {/* Agent Status Indicator */}
         <AgentMonitor />
 
         {/* Video/Audio Area */}
-        <div className="relative flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0 bg-black/20">
           <SpeakerLayout participantsBarPosition="bottom" />
         </div>
 
         {/* Controls */}
-        <div className="flex-shrink-0 bg-gray-800 px-6 py-6">
+        <div className="flex-shrink-0 px-6 py-4 border-t border-white/5 bg-card/50 backdrop-blur-sm">
           <div className="flex items-center justify-center">
             <CallControls />
           </div>
