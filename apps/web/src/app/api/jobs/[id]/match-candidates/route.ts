@@ -166,10 +166,10 @@ export async function POST(
     // Get job
     const job = await storage.getJob(jobId);
     if (!job) {
-      return NextResponse.json(
-        { success: false, error: `Job not found: ${jobId}` },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: true,
+        data: { matchedCount: 0, applications: [], message: "Job not found" },
+      });
     }
 
     // Get all CVs

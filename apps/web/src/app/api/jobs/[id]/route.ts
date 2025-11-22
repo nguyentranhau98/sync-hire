@@ -16,12 +16,6 @@ export async function GET(
     const storage = getStorage();
 
     const job = await storage.getJob(jobId);
-    if (!job) {
-      return NextResponse.json(
-        { success: false, error: `Job not found: ${jobId}` },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({ success: true, data: job });
   } catch (error) {
@@ -45,10 +39,7 @@ export async function PUT(
     // Get existing job
     const job = await storage.getJob(jobId);
     if (!job) {
-      return NextResponse.json(
-        { success: false, error: `Job not found: ${jobId}` },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: true, data: null });
     }
 
     // Update job with new settings

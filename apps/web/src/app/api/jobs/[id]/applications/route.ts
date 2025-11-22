@@ -15,16 +15,7 @@ export async function GET(
     const { id: jobId } = await params;
     const storage = getStorage();
 
-    // Verify job exists
-    const job = await storage.getJob(jobId);
-    if (!job) {
-      return NextResponse.json(
-        { success: false, error: `Job not found: ${jobId}` },
-        { status: 404 }
-      );
-    }
-
-    // Get applications for this job
+    // Get applications for this job (returns empty if job doesn't exist)
     const applications = await storage.getApplicationsForJob(jobId);
 
     return NextResponse.json({
