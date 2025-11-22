@@ -77,4 +77,16 @@ export interface StorageInterface {
    * Check if CV extraction exists
    */
   hasCVExtraction(hash: string): Promise<boolean>;
+
+  /**
+   * Get all CV extraction hashes (for demo single-user scenario)
+   * Returns array of hashes in order of most recent first
+   */
+  getAllCVExtractionHashes(): Promise<string[]>;
+
+  /**
+   * Get the most recent CV extraction data (for demo single-user scenario)
+   * Returns null if no CV extractions exist
+   */
+  getMostRecentCVExtraction(): Promise<{ hash: string; data: ExtractedCVData } | null>;
 }

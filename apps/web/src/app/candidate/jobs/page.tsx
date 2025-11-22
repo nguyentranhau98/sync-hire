@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { getAllInterviews, getJobById, getDemoUser } from "@/lib/mock-data";
 import { getCompanyLogoUrl } from "@/lib/logo-utils";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { CVUploadSection } from "@/components/CVUpload";
 import { ProcessingProgress, ProcessingStage } from "@/components/ProgressIndicator";
 import { generateJobMatches, simulateCVParsing, simulateJobMatching } from "@/lib/job-matching";
 
-type WorkflowStage = 'upload' | 'processing' | 'results';
+type WorkflowStage = 'upload' | 'processing' | 'results' | 'checking';
 
 type InterviewWithMatch = ReturnType<typeof getAllInterviews>[0] & {
   job: NonNullable<ReturnType<typeof getJobById>>;
@@ -46,16 +46,16 @@ export default function CandidateJobListings() {
     });
 
   // CV upload state
-  const [workflowStage, setWorkflowStage] = useState<WorkflowStage>('upload');
+  const [workflowStage, setWorkflowStage] = useState<WorkflowStage>('checking');
   const [processingStage, setProcessingStage] = useState<ProcessingStage>('upload');
   const [processingProgress, setProcessingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [matchedInterviews, setMatchedInterviews] = useState<InterviewWithMatch[]>([]);
 
   /**
-   * Trigger background CV extraction without blocking the main flow
+   * Trigger CV extraction and return the hash
    */
-  const triggerCVExtraction = useCallback(async (file: File) => {
+  const triggerCVExtraction = useCallback(async (file: File): Promise<string | null> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -68,12 +68,14 @@ export default function CandidateJobListings() {
       if (response.ok) {
         const result = await response.json();
         console.log('CV extraction completed:', result.data.id, result.data.cached ? 'from cache' : 'new extraction');
+        return result.data.id; // Return the hash
       } else {
         console.warn('CV extraction failed:', await response.text());
+        return null;
       }
     } catch (error) {
       console.error('CV extraction error:', error);
-      // Don't let extraction failures affect the user experience
+      return null;
     }
   }, []);
 
@@ -83,14 +85,14 @@ export default function CandidateJobListings() {
     setProcessingStage('parsing');
     setProcessingProgress(0);
 
-    // Trigger background CV extraction (non-blocking)
-    triggerCVExtraction(file);
-
     try {
-      // Simulate CV parsing
+      // Trigger CV extraction and wait for hash
+      const cvHashPromise = triggerCVExtraction(file);
+
+      // Simulate CV parsing (parallel with extraction)
       await simulateCVParsing((progress) => {
         setProcessingProgress(progress);
-      }, 2000);
+      }, 6000);
 
       // Move to matching stage
       setProcessingStage('matching');
@@ -99,13 +101,16 @@ export default function CandidateJobListings() {
       // Simulate job matching
       await simulateJobMatching((progress) => {
         setProcessingProgress(progress);
-      }, 2500);
+      }, 4000);
 
-      // Generate matches for interviews
+      // Wait for CV extraction to complete and get hash
+      const cvHash = await cvHashPromise;
+
+      // Generate matches for interviews using hash (or fallback to filename)
       const interviewJobs = interviews
         .map(interview => interview.job)
         .filter((job): job is NonNullable<typeof job> => Boolean(job));
-      const jobMatches = generateJobMatches(interviewJobs, file.name);
+      const jobMatches = generateJobMatches(interviewJobs, cvHash || file.name);
 
       // Combine interviews with their match percentages
       const interviewsWithMatches: InterviewWithMatch[] = interviews.map(interview => {
@@ -125,7 +130,7 @@ export default function CandidateJobListings() {
       // Show results after a longer delay to let users see the success message
       setTimeout(() => {
         setWorkflowStage('results');
-      }, 1500);
+      }, 1000);
 
     } catch (err) {
       console.error('Processing error:', err);
@@ -142,6 +147,55 @@ export default function CandidateJobListings() {
     setMatchedInterviews([]);
   }, []);
 
+  /**
+   * Check for existing CV on component mount
+   */
+  useEffect(() => {
+    const checkForExistingCV = async () => {
+      try {
+        const response = await fetch('/api/cv/check');
+        if (response.ok) {
+          const result = await response.json();
+
+          if (result.data.exists && result.data.hash) {
+            // CV exists, auto-generate matches and skip upload
+            // Generate matches for existing CV
+            const interviewJobs = interviews
+              .map(interview => interview.job)
+              .filter((job): job is NonNullable<typeof job> => Boolean(job));
+            const jobMatches = generateJobMatches(interviewJobs, result.data.hash);
+
+            // Combine interviews with their match percentages
+            const interviewsWithMatches: InterviewWithMatch[] = interviews.map(interview => {
+              const jobMatch = jobMatches.find(match => match.id === interview.jobId);
+              return {
+                ...interview,
+                job: interview.job!,
+                matchPercentage: jobMatch?.matchPercentage || Math.floor(Math.random() * 30) + 70
+              };
+            }).sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+            setMatchedInterviews(interviewsWithMatches);
+            setWorkflowStage('results');
+          } else {
+            // No CV exists, show upload form
+            setWorkflowStage('upload');
+          }
+        } else {
+          // API error, default to upload
+          console.error('CV check failed:', await response.text());
+          setWorkflowStage('upload');
+        }
+      } catch (error) {
+        console.error('CV check error:', error);
+        // On error, default to upload form
+        setWorkflowStage('upload');
+      }
+    };
+
+    checkForExistingCV();
+  }, []);
+
   return (
     <div className="relative min-h-screen">
       {/* Ambient Background Effects */}
@@ -156,6 +210,7 @@ export default function CandidateJobListings() {
             <Sparkles className="h-3.5 w-3.5 text-blue-400" />
             <span className="text-xs font-medium text-muted-foreground">Welcome, {demoUser.name}</span>
           </div>
+
 
           {workflowStage === 'upload' && (
             <>
@@ -209,6 +264,12 @@ export default function CandidateJobListings() {
 
         {/* Main Content Area */}
         <div className="space-y-8">
+          {workflowStage === 'checking' && (
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+          )}
+
           {workflowStage === 'upload' && (
             <CVUploadSection
               onFileSelect={handleFileSelect}

@@ -175,4 +175,53 @@ export class FileStorage implements StorageInterface {
       return false;
     }
   }
+
+  async getAllCVExtractionHashes(): Promise<string[]> {
+    try {
+      const files = await fs.readdir(CV_EXTRACTIONS_DIR);
+      const hashes: { hash: string; mtime: Date }[] = [];
+
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          try {
+            const filePath = join(CV_EXTRACTIONS_DIR, file);
+            const stats = await fs.stat(filePath);
+            const hash = file.replace(".json", "");
+            hashes.push({ hash, mtime: stats.mtime });
+          } catch (error) {
+            console.error(`Failed to stat CV extraction file ${file}:`, error);
+          }
+        }
+      }
+
+      // Sort by modification time, most recent first
+      hashes.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+      return hashes.map(h => h.hash);
+    } catch (error) {
+      // Directory doesn't exist yet
+      return [];
+    }
+  }
+
+  async getMostRecentCVExtraction(): Promise<{ hash: string; data: ExtractedCVData } | null> {
+    try {
+      const hashes = await this.getAllCVExtractionHashes();
+      if (hashes.length === 0) {
+        return null;
+      }
+
+      const mostRecentHash = hashes[0];
+      const data = await this.getCVExtraction(mostRecentHash);
+
+      if (data === null) {
+        return null;
+      }
+
+      return { hash: mostRecentHash, data };
+    } catch (error) {
+      console.error("Failed to get most recent CV extraction:", error);
+      return null;
+    }
+  }
 }
