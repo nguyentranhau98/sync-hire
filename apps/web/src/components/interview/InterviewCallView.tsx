@@ -109,8 +109,9 @@ function InterviewCallContent({
     setAgentConnected(hasAgent);
   }, [participants]);
 
-  // Track last speaker to merge consecutive messages
-  const lastSpeakerRef = useRef<string | null>(null);
+  // Track caption segments to handle Stream's segmented delivery
+  // Key: speakerId, Value: { startTime, lastText }
+  const captionSegmentsRef = useRef<Map<string, { startTime: string; lastText: string }>>(new Map());
 
   // Build transcript from closed captions - streaming updates
   useEffect(() => {
@@ -126,27 +127,52 @@ function InterviewCallContent({
       }
 
       const speakerId = caption.user.id;
+      const startTime = caption.start_time || '';
       const isAI = caption.user.name?.toLowerCase().includes('interviewer') ||
                    caption.user.name?.toLowerCase().includes('ai') ||
                    speakerId?.startsWith('agent-');
 
-      console.log('📝 Caption from', caption.user.name, ':', text.substring(0, 50) + '...');
+      // Get the last segment info for this speaker
+      const lastSegment = captionSegmentsRef.current.get(speakerId);
+      const isNewSegment = !lastSegment || lastSegment.startTime !== startTime;
+      const isSameText = lastSegment?.lastText === text;
+
+      // Skip if we've already processed this exact text
+      if (isSameText) {
+        return;
+      }
+
+      console.log('📝 Caption:', caption.user.name, isNewSegment ? '[NEW]' : '[UPD]', text.substring(0, 40) + '...');
+
+      // Update segment tracking
+      captionSegmentsRef.current.set(speakerId, { startTime, lastText: text });
 
       setTranscript(prev => {
         const lastMessage = prev[prev.length - 1];
 
-        // Same speaker - update the last message text
+        // Same speaker
         if (lastMessage && lastMessage.speakerId === speakerId) {
-          // Only update if text is different (longer usually)
-          if (text !== lastMessage.text) {
+          if (isNewSegment) {
+            // New segment from same speaker - APPEND to existing message
             const updated = [...prev];
             updated[updated.length - 1] = {
               ...lastMessage,
-              text: text,
+              text: lastMessage.text + ' ' + text,
             };
             return updated;
+          } else {
+            // Same segment - text is cumulative, check if it's an extension
+            // If new text is longer and contains similar content, replace
+            if (text.length >= lastMessage.text.length) {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...lastMessage,
+                text: text,
+              };
+              return updated;
+            }
+            return prev;
           }
-          return prev;
         }
 
         // Different speaker - add new message
@@ -160,8 +186,6 @@ function InterviewCallContent({
           isAI,
         }];
       });
-
-      lastSpeakerRef.current = speakerId;
     });
   }, [closedCaptions]);
 
