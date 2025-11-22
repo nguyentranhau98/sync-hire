@@ -733,7 +733,7 @@ export default function JobCreationPage() {
                       No questions yet. Upload a job description to generate AI questions or add custom ones.
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {state.questions.map((question) => {
                         const isExcluded = question.status === "excluded";
                         const isCustom = question.type === "custom";
@@ -741,36 +741,33 @@ export default function JobCreationPage() {
                           <div
                             key={question.id}
                             onClick={() => handleToggleQuestion(question.id)}
-                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                            className={`border rounded-md p-2 cursor-pointer transition-all ${
                               isExcluded
-                                ? "bg-muted/50 opacity-60 border-dashed"
-                                : isCustom
-                                  ? "bg-purple-50/50 hover:bg-purple-100/50 border-purple-200"
-                                  : "bg-blue-50/50 hover:bg-blue-100/50"
+                                ? "opacity-50 border-dashed bg-muted/30"
+                                : "hover:bg-muted/50"
                             }`}
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Badge variant="outline" className="text-xs">
-                                    {isCustom ? "Custom" : "AI Generated"}
-                                  </Badge>
-                                </div>
-                                <p className={`font-medium ${isExcluded ? "line-through text-muted-foreground" : ""}`}>
-                                  {question.content}
-                                </p>
-                                {question.reason && (
-                                  <span className="text-xs text-muted-foreground mt-1 block">
-                                    {question.reason}
-                                  </span>
-                                )}
-                              </div>
+                            <div className="flex items-start gap-2">
                               <Badge
-                                variant={isExcluded ? "secondary" : "default"}
-                                className="ml-2 shrink-0"
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 h-5 shrink-0 font-medium ${
+                                  isCustom
+                                    ? "bg-primary/10 text-primary border-primary/30"
+                                    : "bg-blue-500/10 text-blue-600 border-blue-500/30 dark:text-blue-400"
+                                }`}
                               >
-                                {isExcluded ? "Excluded" : "Included"}
+                                {isCustom ? "Custom" : "AI"}
                               </Badge>
+                              <p className={`text-sm flex-1 ${isExcluded ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                {question.content}
+                              </p>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium ${
+                                isExcluded
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-green-500/15 text-green-600 dark:text-green-400"
+                              }`}>
+                                {isExcluded ? "Skip" : "Include"}
+                              </span>
                             </div>
                           </div>
                         );
