@@ -58,15 +58,28 @@ export async function POST(request: Request) {
             const questionSet =
               await storage.getInterviewQuestions(combinedHash);
 
-            if (questionSet && questionSet.suggestedQuestions.length > 0) {
-              questions = questionSet.suggestedQuestions.map((q, index) => ({
-                id: `gen-q-${index}`,
+            if (questionSet) {
+              // Merge both custom questions (kept job questions) and suggested questions (AI gap questions)
+              const customQs = (questionSet.customQuestions || []).map((q, index) => ({
+                id: q.id || `custom-q-${index}`,
                 text: q.content,
                 type: "video" as const,
                 duration: 3, // 3 minutes per question
                 category: "Technical Skills" as const,
-                keyPoints: [q.reason],
+                keyPoints: [] as string[],
               }));
+
+              const suggestedQs = (questionSet.suggestedQuestions || []).map((q, index) => ({
+                id: `suggested-q-${index}`,
+                text: q.content,
+                type: "video" as const,
+                duration: 3, // 3 minutes per question
+                category: "Technical Skills" as const,
+                keyPoints: q.reason ? [q.reason] : [],
+              }));
+
+              // Custom questions first (from job), then AI-personalized questions
+              questions = [...customQs, ...suggestedQs];
             }
           }
 
