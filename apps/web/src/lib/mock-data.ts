@@ -53,6 +53,9 @@ export interface Job {
   customQuestions?: CustomQuestion[];
   jdVersion?: JobDescriptionVersion;
   status?: "DRAFT" | "ACTIVE" | "CLOSED";
+  // AI Matching settings
+  aiMatchingEnabled?: boolean; // Auto-match candidates when enabled
+  aiMatchingThreshold?: number; // Minimum match % to auto-apply (default 80)
 }
 
 export interface Interview {
@@ -80,6 +83,35 @@ export interface JobApplication {
   interviewId?: string; // Links to Interview once created
   appliedAt?: Date;
   createdAt: Date;
+}
+
+/**
+ * CandidateApplication represents a persisted application record
+ * Created when AI matching auto-applies a candidate or candidate manually applies
+ */
+export type ApplicationStatus =
+  | "matching"           // AI is calculating match score
+  | "generating_questions" // Generating personalized questions
+  | "ready"              // Ready for interview
+  | "interviewing"       // Interview in progress
+  | "completed"          // Interview completed
+  | "rejected";          // Application rejected
+
+export interface CandidateApplication {
+  id: string;
+  jobId: string;
+  cvId: string;
+  candidateName: string;
+  candidateEmail: string;
+  matchScore: number;
+  matchReasons: string[];    // Why this candidate matches
+  skillGaps?: string[];      // Skills candidate is missing
+  status: ApplicationStatus;
+  questionsHash?: string;    // Link to questions-set file (cvId + jobId hash)
+  interviewId?: string;      // Link to interview once started
+  source: "ai_match" | "manual_apply"; // How the application was created
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Applicant {

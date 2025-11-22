@@ -106,3 +106,96 @@ export function useGenerateJobQuestions() {
     },
   });
 }
+
+// =============================================================================
+// Job Settings Mutations
+// =============================================================================
+
+interface UpdateJobSettingsParams {
+  jobId: string;
+  aiMatchingEnabled?: boolean;
+  aiMatchingThreshold?: number;
+}
+
+interface UpdateJobSettingsResponse {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Hook for updating job settings (AI matching, etc.)
+ */
+export function useUpdateJobSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateJobSettingsResponse, Error, UpdateJobSettingsParams>({
+    mutationFn: async ({ jobId, ...settings }) => {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update job settings");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update settings");
+    },
+  });
+}
+
+interface MatchCandidatesParams {
+  jobId: string;
+}
+
+interface MatchCandidatesResponse {
+  success: boolean;
+  data?: {
+    matchedCount: number;
+    applications: Array<{
+      id: string;
+      candidateName: string;
+      matchScore: number;
+      status: string;
+    }>;
+  };
+  error?: string;
+}
+
+/**
+ * Hook for triggering AI candidate matching
+ */
+export function useMatchCandidates() {
+  const queryClient = useQueryClient();
+
+  return useMutation<MatchCandidatesResponse, Error, MatchCandidatesParams>({
+    mutationFn: async ({ jobId }) => {
+      const response = await fetch(`/api/jobs/${jobId}/match-candidates`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to match candidates");
+      }
+
+      return response.json();
+    },
+    onSuccess: (result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/jobs/${variables.jobId}/applications`] });
+      toast.success(`Found ${result.data?.matchedCount || 0} matching candidates!`);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to match candidates");
+    },
+  });
+}

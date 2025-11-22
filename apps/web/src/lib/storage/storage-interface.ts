@@ -6,6 +6,7 @@
  */
 
 import type {
+  CandidateApplication,
   ExtractedCVData,
   ExtractedJobData,
   Interview,
@@ -200,4 +201,28 @@ export interface StorageInterface {
    * Mark a notification as read
    */
   markNotificationRead(notificationId: string): Promise<void>;
+
+  // =============================================================================
+  // Candidate Application Methods
+  // =============================================================================
+
+  /**
+   * Get all applications for a job
+   */
+  getApplicationsForJob(jobId: string): Promise<CandidateApplication[]>;
+
+  /**
+   * Get a specific application by ID
+   */
+  getApplication(applicationId: string): Promise<CandidateApplication | null>;
+
+  /**
+   * Save/update a candidate application
+   */
+  saveApplication(application: CandidateApplication): Promise<void>;
+
+  /**
+   * Get all CV extractions (for AI matching)
+   */
+  getAllCVExtractions(): Promise<Array<{ cvId: string; data: ExtractedCVData }>>;
 }

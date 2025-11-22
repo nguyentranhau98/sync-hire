@@ -13,6 +13,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -28,9 +29,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useSaveJobQuestions, useGenerateJobQuestions } from "@/lib/hooks/use-job-questions";
+import { useSaveJobQuestions, useGenerateJobQuestions, useUpdateJobSettings, useMatchCandidates } from "@/lib/hooks/use-job-questions";
 import type { Job } from "@/lib/mock-data";
 
 interface Question {
@@ -52,9 +54,14 @@ export default function HRJDDetail() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [newQuestion, setNewQuestion] = useState<{ text: string; type: "text" | "video" | "code"; duration: number }>({ text: "", type: "text", duration: 2 });
 
+  // AI Matching settings state
+  const [aiMatchingEnabled, setAiMatchingEnabled] = useState(true);
+
   // React Query mutations
   const saveQuestionsMutation = useSaveJobQuestions();
   const generateQuestionsMutation = useGenerateJobQuestions();
+  const updateSettingsMutation = useUpdateJobSettings();
+  const matchCandidatesMutation = useMatchCandidates();
 
   useEffect(() => {
     async function fetchJob() {
@@ -67,6 +74,9 @@ export default function HRJDDetail() {
         setJob(foundJob || null);
         if (foundJob?.questions) {
           setQuestions(foundJob.questions);
+        }
+        if (foundJob) {
+          setAiMatchingEnabled(foundJob.aiMatchingEnabled ?? true);
         }
       } catch (error) {
         console.error("Error fetching job:", error);
@@ -158,6 +168,35 @@ export default function HRJDDetail() {
         },
       }
     );
+  };
+
+  // Toggle AI Matching and trigger candidate matching
+  const handleToggleAiMatching = (enabled: boolean) => {
+    if (!job) return;
+    setAiMatchingEnabled(enabled);
+
+    updateSettingsMutation.mutate(
+      { jobId: job.id, aiMatchingEnabled: enabled },
+      {
+        onSuccess: () => {
+          if (enabled) {
+            toast.success("AI Matching enabled - scanning for candidates...");
+            matchCandidatesMutation.mutate({ jobId: job.id });
+          } else {
+            toast.success("AI Matching disabled");
+          }
+        },
+        onError: () => {
+          setAiMatchingEnabled(!enabled); // Revert on error
+        },
+      }
+    );
+  };
+
+  // Rescan for candidates
+  const handleRescanCandidates = () => {
+    if (!job) return;
+    matchCandidatesMutation.mutate({ jobId: job.id });
   };
 
   if (isLoading) {
@@ -456,7 +495,80 @@ export default function HRJDDetail() {
           )}
         </TabsContent>
 
-        <TabsContent value="settings">{/* Settings Content */}</TabsContent>
+        <TabsContent
+          value="settings"
+          className="space-y-6 animate-in fade-in duration-300"
+        >
+          {/* AI Matching Settings */}
+          <div className="p-6 rounded-xl bg-card border border-border">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-green-500" />
+                  <h3 className="text-lg font-semibold text-foreground">
+                    AI Candidate Matching
+                  </h3>
+                  {aiMatchingEnabled && (
+                    <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-xs">
+                      ON
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  Automatically find and match candidates from the CV pool. When enabled,
+                  candidates with 80%+ match score will be auto-applied and receive personalized
+                  interview questions.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {matchCandidatesMutation.isPending && (
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Scanning...
+                  </span>
+                )}
+                <Switch
+                  checked={aiMatchingEnabled}
+                  onCheckedChange={handleToggleAiMatching}
+                  disabled={updateSettingsMutation.isPending || matchCandidatesMutation.isPending}
+                />
+              </div>
+            </div>
+
+            {aiMatchingEnabled && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-secondary/30 border border-border">
+                    <p className="text-xs text-muted-foreground">Match Threshold</p>
+                    <p className="text-2xl font-bold text-foreground">80%</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-secondary/30 border border-border">
+                    <p className="text-xs text-muted-foreground">Matched Candidates</p>
+                    <p className="text-2xl font-bold text-foreground">{job.applicantsCount}</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-secondary/30 border border-border">
+                    <p className="text-xs text-muted-foreground">Questions Ready</p>
+                    <p className="text-2xl font-bold text-foreground">{job.applicantsCount}</p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="mt-4 gap-2"
+                  onClick={handleRescanCandidates}
+                  disabled={matchCandidatesMutation.isPending}
+                >
+                  {matchCandidatesMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {matchCandidatesMutation.isPending ? "Scanning..." : "Rescan for Candidates"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Add Question Modal */}

@@ -8,6 +8,7 @@
 import { promises as fs } from "fs";
 import { join } from "path";
 import type {
+  CandidateApplication,
   ExtractedCVData,
   ExtractedJobData,
   Interview,
@@ -36,6 +37,7 @@ const INTERVIEWS_DIR = join(DATA_DIR, "interviews");
 const USERS_DIR = join(DATA_DIR, "users");
 const USER_CVS_DIR = join(DATA_DIR, "user-cvs");
 const NOTIFICATIONS_DIR = join(DATA_DIR, "notifications");
+const APPLICATIONS_DIR = join(DATA_DIR, "applications");
 
 export class FileStorage implements StorageInterface {
   // Job Description methods
@@ -422,6 +424,95 @@ export class FileStorage implements StorageInterface {
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
       throw error;
+    }
+  }
+
+  // =============================================================================
+  // Candidate Application Methods
+  // =============================================================================
+
+  async getApplicationsForJob(jobId: string): Promise<CandidateApplication[]> {
+    try {
+      const jobApplicationsDir = join(APPLICATIONS_DIR, jobId);
+      const files = await fs.readdir(jobApplicationsDir);
+      const applications: CandidateApplication[] = [];
+
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          try {
+            const filePath = join(jobApplicationsDir, file);
+            const data = await fs.readFile(filePath, "utf-8");
+            applications.push(JSON.parse(data) as CandidateApplication);
+          } catch (error) {
+            console.error(`Failed to read application file ${file}:`, error);
+          }
+        }
+      }
+
+      // Sort by matchScore descending (highest first)
+      return applications.sort((a, b) => b.matchScore - a.matchScore);
+    } catch {
+      // Directory doesn't exist yet, return empty array
+      return [];
+    }
+  }
+
+  async getApplication(applicationId: string): Promise<CandidateApplication | null> {
+    try {
+      // Search for application in all job directories
+      const jobDirs = await fs.readdir(APPLICATIONS_DIR);
+      for (const jobDir of jobDirs) {
+        const filePath = join(APPLICATIONS_DIR, jobDir, `${applicationId}.json`);
+        try {
+          const data = await fs.readFile(filePath, "utf-8");
+          return JSON.parse(data) as CandidateApplication;
+        } catch {
+          // File doesn't exist in this directory, continue
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveApplication(application: CandidateApplication): Promise<void> {
+    try {
+      const jobApplicationsDir = join(APPLICATIONS_DIR, application.jobId);
+      await fs.mkdir(jobApplicationsDir, { recursive: true });
+      const filePath = join(jobApplicationsDir, `${application.id}.json`);
+      await fs.writeFile(filePath, JSON.stringify(application, null, 2));
+    } catch (error) {
+      console.error("Failed to save application:", error);
+      throw error;
+    }
+  }
+
+  async getAllCVExtractions(): Promise<Array<{ cvId: string; data: ExtractedCVData }>> {
+    try {
+      const files = await fs.readdir(CV_EXTRACTIONS_DIR);
+      const extractions: Array<{ cvId: string; data: ExtractedCVData }> = [];
+
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          try {
+            const filePath = join(CV_EXTRACTIONS_DIR, file);
+            const data = await fs.readFile(filePath, "utf-8");
+            const cvId = file.replace(".json", "");
+            extractions.push({
+              cvId,
+              data: JSON.parse(data) as ExtractedCVData,
+            });
+          } catch (error) {
+            console.error(`Failed to read CV extraction file ${file}:`, error);
+          }
+        }
+      }
+
+      return extractions;
+    } catch {
+      // Directory doesn't exist yet, return empty array
+      return [];
     }
   }
 }
