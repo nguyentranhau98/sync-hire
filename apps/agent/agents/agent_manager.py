@@ -136,7 +136,7 @@ class AgentManager:
     async def start_interview(
         self,
         call_id: str,
-        questions: List[str],
+        questions: List[dict],
         candidate_name: str,
         job_title: str
     ) -> None:
@@ -145,7 +145,7 @@ class AgentManager:
 
         Args:
             call_id: Stream call ID to join
-            questions: List of interview questions
+            questions: List of question dicts with 'text' and 'category' keys
             candidate_name: Candidate's name
             job_title: Job position
         """
@@ -189,7 +189,7 @@ class AgentManager:
 
         # Create completion processor (agent_user_id will be set after join)
         completion_processor = InterviewCompletionProcessor(
-            expected_questions=len(questions),
+            questions=questions,
             minimum_duration_minutes=3,
             call=call,
         )
@@ -379,13 +379,13 @@ class AgentManager:
 
     def _build_instructions(
         self,
-        questions: List[str],
+        questions: List[dict],
         candidate_name: str,
         job_title: str
     ) -> str:
         """Build personalized agent instructions."""
         base = self._load_instructions()
-        questions_text = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions)])
+        questions_text = "\n".join([f"{i+1}. {q['text']}" for i, q in enumerate(questions)])
 
         return f"""{base}
 

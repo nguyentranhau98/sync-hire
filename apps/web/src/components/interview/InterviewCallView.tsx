@@ -109,19 +109,23 @@ function InterviewCallContent({
     setAgentConnected(hasAgent);
   }, [participants]);
 
-  // Listen for custom transcript events from AI agent (original Gemini text)
+  // Listen for custom events from AI agent (transcript and progress)
   useEffect(() => {
-    const handleCustomEvent = (event: { custom?: { type?: string; speaker?: string; text?: string; timestamp?: number } }) => {
+    const handleCustomEvent = (event: { custom?: { type?: string; speaker?: string; text?: string; timestamp?: number; questionIndex?: number; category?: string } }) => {
       const payload = event.custom;
-      if (payload?.type === 'transcript' && payload.speaker === 'agent' && payload.text) {
+
+      // Handle transcript events (both AI and user from Gemini)
+      if (payload?.type === 'transcript' && payload.text) {
         const text = payload.text;
-        console.log('📨 AI transcript event:', text.substring(0, 50) + '...');
+        const isAgent = payload.speaker === 'agent';
+        console.log(`📨 ${isAgent ? 'AI' : 'User'} transcript event:`, text.substring(0, 50) + '...');
 
         setTranscript(prev => {
           const lastMessage = prev[prev.length - 1];
+          const speakerId = isAgent ? 'agent' : 'user';
 
-          // If last message is from AI, append to it
-          if (lastMessage && lastMessage.isAI) {
+          // If last message is from same speaker, append to it
+          if (lastMessage && lastMessage.isAI === isAgent) {
             const updated = [...prev];
             updated[updated.length - 1] = {
               ...lastMessage,
@@ -130,16 +134,22 @@ function InterviewCallContent({
             return updated;
           }
 
-          // New AI message
+          // New message
           return [...prev, {
-            id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            speakerId: 'agent',
-            speakerName: 'AI Interviewer',
+            id: `${speakerId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            speakerId,
+            speakerName: isAgent ? 'AI Interviewer' : 'You',
             text,
             timestamp: Date.now(),
-            isAI: true,
+            isAI: isAgent,
           }];
         });
+      }
+
+      // Handle progress events
+      if (payload?.type === 'progress' && typeof payload.questionIndex === 'number') {
+        console.log('📊 Progress event:', payload.questionIndex + 1, payload.category);
+        setCurrentQuestionIndex(payload.questionIndex);
       }
     };
 
@@ -174,8 +184,7 @@ function InterviewCallContent({
                    caption.user.name?.toLowerCase().includes('ai') ||
                    speakerId?.startsWith('agent-');
 
-      // Skip AI captions - we don't need re-transcription of AI speech
-      // The AI's original text is more accurate than Stream's re-transcription
+      // Skip AI captions - we get AI text from custom events instead
       if (isAI) {
         return;
       }
