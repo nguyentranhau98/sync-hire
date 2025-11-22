@@ -25,6 +25,11 @@ class Config:
     # Alternative: Gemini
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
+    # Deepgram STT
+    DEEPGRAM_API_KEY: Optional[str] = os.getenv("DEEPGRAM_API_KEY")
+    DEEPGRAM_SAMPLE_RATE: int = int(os.getenv("DEEPGRAM_SAMPLE_RATE", "48000"))
+    DEEPGRAM_LANGUAGE: str = os.getenv("DEEPGRAM_LANGUAGE", "en-US")
+
     # HeyGen Avatar
     HEYGEN_API_KEY: Optional[str] = os.getenv("HEYGEN_API_KEY")
     HEYGEN_AVATAR_ID: str = os.getenv("HEYGEN_AVATAR_ID", "default")
@@ -53,7 +58,7 @@ class Config:
         """Validate required configuration"""
         required = [
             ("STREAM_API_KEY", cls.STREAM_API_KEY),
-            ("OPENAI_API_KEY", cls.OPENAI_API_KEY),
+            ("DEEPGRAM_API_KEY", cls.DEEPGRAM_API_KEY),
             ("NEXTJS_WEBHOOK_URL", cls.NEXTJS_WEBHOOK_URL)
         ]
 
