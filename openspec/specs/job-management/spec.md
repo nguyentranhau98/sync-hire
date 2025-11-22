@@ -304,17 +304,12 @@ The system SHALL store custom screening questions with support for multiple ques
 The system SHALL provide RESTful API endpoints for JD extraction, AI suggestions, job creation, and custom question management.
 
 #### Scenario: POST /api/jobs/extract-jd - Extract job description
-- **WHEN** client sends POST request with { text: "job description..." } or file upload
-- **THEN** the system extracts text from file if provided
-- **THEN** the system calls Gemini API with extraction prompt
-- **THEN** the system returns 200 with { data: { title, responsibilities, requirements, seniority, location, employmentType } }
+- **WHEN** client sends POST request with PDF file upload
+- **THEN** the system extracts text from PDF using Gemini API
+- **THEN** the system calls Gemini API with extraction prompt to get structured data (title, responsibilities, requirements, seniority, location, employmentType)
+- **THEN** the system generates AI suggestions and interview questions in a single consolidated API call
+- **THEN** the system returns 200 with { data: { id, extractedData, aiSuggestions, aiQuestions, cached } }
 - **THEN** if extraction fails, returns 500 with { error: "Extraction failed" }
-
-#### Scenario: POST /api/jobs/ai-suggestions - Generate improvement suggestions
-- **WHEN** client sends POST request with { jobDescription: "..." }
-- **THEN** the system calls Gemini API with improvement prompt
-- **THEN** the system returns 200 with { data: { suggestions: [{ category: "inclusiveness", text: "...", original: "...", improved: "..." }] } }
-- **THEN** if API fails, returns 500 with { error: "Suggestion generation failed" }
 
 #### Scenario: POST /api/jobs/create - Create job posting
 - **WHEN** client sends POST request with job data and custom questions

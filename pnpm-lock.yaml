@@ -175,9 +175,6 @@ importers:
       zod:
         specifier: ^4.1.12
         version: 4.1.12
-      zod-to-json-schema:
-        specifier: ^3.25.0
-        version: 3.25.0(zod@4.1.12)
     devDependencies:
       '@biomejs/biome':
         specifier: 2.2.0
@@ -2301,11 +2298,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  zod-to-json-schema@3.25.0:
-    resolution: {integrity: sha512-HvWtU2UG41LALjajJrML6uQejQhNJx+JBO9IflpSja4R03iNWfKXrj6W2h7ljuLyc1nKS+9yDyL/9tD1U/yBnQ==}
-    peerDependencies:
-      zod: ^3.25 || ^4
-
   zod@4.1.12:
     resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
 
@@ -4321,9 +4313,5 @@ snapshots:
       strip-ansi: 7.1.2
 
   ws@8.18.3: {}
-
-  zod-to-json-schema@3.25.0(zod@4.1.12):
-    dependencies:
-      zod: 4.1.12
 
   zod@4.1.12: {}
