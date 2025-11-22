@@ -17,222 +17,215 @@ import { log } from "node:console";
 
 // Define Zod schema for extracted CV data
 const extractedCVDataSchema = z.object({
-  personalInfo: z.any().nullable().transform(obj => {
-    if (typeof obj !== 'object' || obj === null) {
-      return {
-        fullName: "",
-        email: undefined,
-        phone: undefined,
-        location: undefined,
-        summary: undefined,
-        linkedinUrl: undefined,
-        githubUrl: undefined,
-        portfolioUrl: undefined,
-      };
-    }
-    return {
-      fullName: (obj.fullName || "").toString(),
-      email: obj.email ? obj.email.toString() : undefined,
-      phone: obj.phone ? obj.phone.toString() : undefined,
-      location: obj.location ? obj.location.toString() : undefined,
-      summary: obj.summary ? obj.summary.toString() : undefined,
-      linkedinUrl: obj.linkedinUrl ? obj.linkedinUrl.toString() : undefined,
-      githubUrl: obj.githubUrl ? obj.githubUrl.toString() : undefined,
-      portfolioUrl: obj.portfolioUrl ? obj.portfolioUrl.toString() : undefined,
-    };
+  personalInfo: z.object({
+    fullName: z
+      .string()
+      .nullable()
+      .transform(val => val || "")
+      .describe("The person's full name"),
+    email: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("Email address"),
+    phone: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("Phone number"),
+    location: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("Location/City"),
+    summary: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("Professional summary"),
+    linkedinUrl: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("LinkedIn profile URL"),
+    githubUrl: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("GitHub profile URL"),
+    portfolioUrl: z
+      .string()
+      .nullable()
+      .transform(val => val || undefined)
+      .describe("Portfolio URL"),
   }),
-  experience: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string' || item === null) {
-        return {
-          title: item || "",
-          company: "",
-          location: undefined,
-          startDate: "",
-          endDate: undefined,
-          current: false,
-          description: [],
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        return {
-          title: (item.title || "").toString(),
-          company: (item.company || "").toString(),
-          location: item.location ? item.location.toString() : undefined,
-          startDate: (item.startDate || "").toString(),
-          endDate: item.endDate ? item.endDate.toString() : undefined,
-          current: Boolean(item.current),
-          description: Array.isArray(item.description) ? item.description.map(d => (d || "").toString()) : [],
-        };
-      }
-      return {
-        title: "",
-        company: "",
-        location: undefined,
-        startDate: "",
-        endDate: undefined,
-        current: false,
-        description: [],
-      };
-    });
-  }).describe("Work experience array"),
-  education: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string' || item === null) {
-        return {
-          degree: item || "",
-          field: "",
-          institution: "",
-          location: undefined,
-          startDate: "",
-          endDate: undefined,
-          current: false,
-          gpa: undefined,
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        return {
-          degree: (item.degree || "").toString(),
-          field: (item.field || "").toString(),
-          institution: (item.institution || "").toString(),
-          location: item.location ? item.location.toString() : undefined,
-          startDate: (item.startDate || "").toString(),
-          endDate: item.endDate ? item.endDate.toString() : undefined,
-          current: Boolean(item.current),
-          gpa: item.gpa ? item.gpa.toString() : undefined,
-        };
-      }
-      return {
-        degree: "",
-        field: "",
-        institution: "",
-        location: undefined,
-        startDate: "",
-        endDate: undefined,
-        current: false,
-        gpa: undefined,
-      };
-    });
-  }).describe("Education history array"),
-  skills: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(skill => (skill || "").toString()).filter(Boolean);
-  }).describe("Technical and professional skills"),
-  certifications: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string' || item === null) {
-        return {
-          name: item || "",
-          issuer: undefined,
-          issueDate: undefined,
-          expiryDate: undefined,
-          credentialId: undefined,
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        return {
-          name: (item.name || "").toString(),
-          issuer: item.issuer ? item.issuer.toString() : undefined,
-          issueDate: item.issueDate ? item.issueDate.toString() : undefined,
-          expiryDate: item.expiryDate ? item.expiryDate.toString() : undefined,
-          credentialId: item.credentialId ? item.credentialId.toString() : undefined,
-        };
-      }
-      return {
-        name: "",
-        issuer: undefined,
-        issueDate: undefined,
-        expiryDate: undefined,
-        credentialId: undefined,
-      };
-    });
-  }).describe("Professional certifications array"),
-  languages: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string' || item === null) {
-        return {
-          language: item || "",
-          proficiency: "Basic" as const,
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        const proficiency = ["Basic", "Intermediate", "Advanced", "Native"].includes(item.proficiency)
-          ? item.proficiency
-          : "Basic";
-        return {
-          language: (item.language || "").toString(),
-          proficiency: proficiency as "Basic" | "Intermediate" | "Advanced" | "Native",
-        };
-      }
-      return {
-        language: "",
-        proficiency: "Basic" as const,
-      };
-    });
-  }).describe("Languages array"),
-  projects: z.any().nullable().transform(arr => {
-    // Handle string input by converting to array with one item
-    if (typeof arr === 'string') {
-      arr = [arr];
-    }
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string' || item === null) {
-        return {
-          name: item || "",
-          description: "",
-          technologies: [],
-          url: undefined,
-          startDate: undefined,
-          endDate: undefined,
-        };
-      }
-      if (typeof item === 'object' && item !== null) {
-        return {
-          name: (item.name || "").toString(),
-          description: (item.description || "").toString(),
-          technologies: Array.isArray(item.technologies)
-            ? item.technologies.map(tech => (tech || "").toString()).filter(Boolean)
-            : [],
-          url: item.url ? item.url.toString() : undefined,
-          startDate: item.startDate ? item.startDate.toString() : undefined,
-          endDate: item.endDate ? item.endDate.toString() : undefined,
-        };
-      }
-      return {
-        name: "",
-        description: "",
-        technologies: [],
-        url: undefined,
-        startDate: undefined,
-        endDate: undefined,
-      };
-    });
-  }).describe("Personal projects array"),
+  experience: z
+    .array(z.object({
+      title: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Job title"),
+      company: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Company name"),
+      location: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Job location"),
+      startDate: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Start date (YYYY-MM format)"),
+      endDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("End date (YYYY-MM format)"),
+      current: z
+        .boolean()
+        .nullable()
+        .transform(val => Boolean(val))
+        .describe("Whether this is the current job"),
+      description: z
+        .array(z.string().nullable().transform(val => val || ""))
+        .transform(arr => arr || [])
+        .describe("List of job responsibilities and achievements"),
+    }))
+    .transform(arr => arr || [])
+    .describe("Work experience array"),
+  education: z
+    .array(z.object({
+      degree: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Degree name"),
+      field: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Field of study"),
+      institution: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("University/School name"),
+      location: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Campus location"),
+      startDate: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Start date (YYYY-MM format)"),
+      endDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("End date (YYYY-MM format)"),
+      current: z
+        .boolean()
+        .nullable()
+        .transform(val => Boolean(val))
+        .describe("Whether currently studying"),
+      gpa: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("GPA if mentioned"),
+    }))
+    .transform(arr => arr || [])
+    .describe("Education history array"),
+  skills: z
+    .array(z.string().nullable().transform(val => val || ""))
+    .transform(arr => arr || [])
+    .describe("Technical and professional skills"),
+  certifications: z
+    .array(z.object({
+      name: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Certification name"),
+      issuer: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Issuing organization"),
+      issueDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Issue date (YYYY-MM format)"),
+      expiryDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Expiry date (YYYY-MM format)"),
+      credentialId: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Credential ID"),
+    }))
+    .transform(arr => arr || [])
+    .describe("Professional certifications array"),
+  languages: z
+    .array(z.object({
+      language: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Language name"),
+      proficiency: z
+        .string()
+        .nullable()
+        .transform(val => val || "Basic")
+        .describe("Proficiency level (Basic, Intermediate, Advanced, Native)"),
+    }))
+    .transform(arr => arr || [])
+    .describe("Languages array"),
+  projects: z
+    .array(z.object({
+      name: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Project name"),
+      description: z
+        .string()
+        .nullable()
+        .transform(val => val || "")
+        .describe("Project description"),
+      technologies: z
+        .array(z.string().nullable().transform(val => val || ""))
+        .transform(arr => arr || [])
+        .describe("Technologies used"),
+      url: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Project URL"),
+      startDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("Start date (YYYY-MM format)"),
+      endDate: z
+        .string()
+        .nullable()
+        .transform(val => val || undefined)
+        .describe("End date (YYYY-MM format)"),
+    }))
+    .transform(arr => arr || [])
+    .describe("Personal projects array"),
 });
 
 export class CVProcessor {
