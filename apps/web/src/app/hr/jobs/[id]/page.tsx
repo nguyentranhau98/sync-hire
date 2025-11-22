@@ -4,39 +4,61 @@ import {
   ArrowLeft,
   BrainCircuit,
   Building2,
+  Check,
   Clock,
-  Code,
   DollarSign,
+  Loader2,
   MapPin,
-  MoreHorizontal,
+  Pencil,
   Plus,
+  Sparkles,
   Trash2,
-  Type,
-  Video,
   Wand2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Job } from "@/lib/mock-data";
+
+interface Question {
+  id: string;
+  text: string;
+  type: "text" | "video" | "code";
+  duration: number;
+}
 
 export default function HRJDDetail() {
   const params = useParams();
   const [job, setJob] = useState<Job | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [questions, setQuestions] = useState<Job["questions"]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  // Question management state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [newQuestion, setNewQuestion] = useState<{ text: string; type: "text" | "video" | "code"; duration: number }>({ text: "", type: "text", duration: 2 });
 
   useEffect(() => {
     async function fetchJob() {
@@ -61,6 +83,78 @@ export default function HRJDDetail() {
       fetchJob();
     }
   }, [params?.id]);
+
+  // Add a new question
+  const handleAddQuestion = () => {
+    if (!newQuestion.text.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+    const question: Question = {
+      id: `q-${Date.now()}`,
+      text: newQuestion.text.trim(),
+      type: newQuestion.type,
+      duration: newQuestion.duration,
+    };
+    setQuestions((prev) => [...prev, question]);
+    setNewQuestion({ text: "", type: "text", duration: 2 });
+    setIsAddModalOpen(false);
+    toast.success("Question added");
+  };
+
+  // Update an existing question
+  const handleUpdateQuestion = () => {
+    if (!editingQuestion || !editingQuestion.text.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === editingQuestion.id ? editingQuestion : q))
+    );
+    setEditingQuestion(null);
+    toast.success("Question updated");
+  };
+
+  // Delete a question
+  const handleDeleteQuestion = (id: string) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== id));
+    toast.success("Question removed");
+  };
+
+  // Generate AI questions
+  const handleGenerateQuestions = async () => {
+    if (!job) return;
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/jobs/generate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: job.id,
+          title: job.title,
+          description: job.description,
+          requirements: job.requirements,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to generate questions");
+      const result = await response.json();
+      const aiQuestions: Question[] = (result.data?.questions || []).map(
+        (q: { content: string; reason?: string }, i: number) => ({
+          id: `ai-${Date.now()}-${i}`,
+          text: q.content,
+          type: "text" as const,
+          duration: 2,
+        })
+      );
+      setQuestions((prev) => [...prev, ...aiQuestions]);
+      toast.success(`Generated ${aiQuestions.length} questions`);
+    } catch (error) {
+      console.error("Error generating questions:", error);
+      toast.error("Failed to generate questions");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -255,68 +349,209 @@ export default function HRJDDetail() {
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                className="gap-2 border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                onClick={handleGenerateQuestions}
+                disabled={isGenerating}
               >
-                <Wand2 className="h-3.5 w-3.5" /> Generate with AI
+                {isGenerating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {isGenerating ? "Generating..." : "Generate with AI"}
               </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="gap-2 bg-foreground text-background hover:bg-foreground/90"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Add Question
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Question</DialogTitle>
-                  </DialogHeader>
-                  {/* Dialog content */}
-                </DialogContent>
-              </Dialog>
+              <Button
+                size="sm"
+                className="gap-2 bg-foreground text-background hover:bg-foreground/90"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Question
+              </Button>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {questions.map((q, i) => (
-              <div
-                key={q.id}
-                className="group flex items-start gap-4 p-5 rounded-xl border border-border bg-card hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300"
-              >
-                <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-secondary text-sm font-bold text-muted-foreground mt-0.5 border border-border group-hover:text-blue-400 group-hover:border-blue-500/30 transition-colors">
-                  {i + 1}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <p className="text-base font-medium text-foreground leading-relaxed">
-                    {q.text}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] h-5 px-2 font-medium text-muted-foreground border-border bg-secondary/50 group-hover:border-blue-500/20 group-hover:text-blue-400 transition-colors"
-                    >
-                      {q.type.toUpperCase()} RESPONSE
-                    </Badge>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {q.duration} min
-                    </span>
-                  </div>
-                </div>
+          {questions.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-border rounded-xl">
+              <Sparkles className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
+              <p className="text-muted-foreground mb-4">No interview questions yet</p>
+              <div className="flex justify-center gap-3">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateQuestions}
+                  disabled={isGenerating}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Sparkles className="h-3.5 w-3.5 mr-2" />
+                  Generate with AI
+                </Button>
+                <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-2" />
+                  Add Manually
                 </Button>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {questions.map((q, i) => (
+                <div
+                  key={q.id}
+                  className="group flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:border-blue-500/30 transition-all"
+                >
+                  <div className="flex items-center justify-center h-7 w-7 rounded-md bg-secondary text-sm font-medium text-muted-foreground border border-border group-hover:text-blue-500 group-hover:border-blue-500/30 transition-colors">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {q.text}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-5 px-1.5 font-medium text-muted-foreground border-border bg-secondary/50"
+                      >
+                        {q.type.toUpperCase()}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {q.duration} min
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={() => setEditingQuestion(q)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteQuestion(q.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="settings">{/* Settings Content */}</TabsContent>
       </Tabs>
+
+      {/* Add Question Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Interview Question</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Question</label>
+              <Textarea
+                placeholder="Enter your interview question..."
+                value={newQuestion.text}
+                onChange={(e) => setNewQuestion((prev) => ({ ...prev, text: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Response Type</label>
+                <Select
+                  value={newQuestion.type}
+                  onValueChange={(v) => setNewQuestion((prev) => ({ ...prev, type: v as "text" | "video" | "code" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="code">Code</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration (min)</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={newQuestion.duration}
+                  onChange={(e) => setNewQuestion((prev) => ({ ...prev, duration: parseInt(e.target.value) || 2 }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddQuestion}>Add Question</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Question Modal */}
+      <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Question</DialogTitle>
+          </DialogHeader>
+          {editingQuestion && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Question</label>
+                <Textarea
+                  placeholder="Enter your interview question..."
+                  value={editingQuestion.text}
+                  onChange={(e) => setEditingQuestion((prev) => prev ? { ...prev, text: e.target.value } : null)}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Response Type</label>
+                  <Select
+                    value={editingQuestion.type}
+                    onValueChange={(v) => setEditingQuestion((prev) => prev ? { ...prev, type: v as "text" | "video" | "code" } : null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Text</SelectItem>
+                      <SelectItem value="video">Video</SelectItem>
+                      <SelectItem value="code">Code</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Duration (min)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={editingQuestion.duration}
+                    onChange={(e) => setEditingQuestion((prev) => prev ? { ...prev, duration: parseInt(e.target.value) || 2 } : null)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingQuestion(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateQuestion}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -229,12 +229,13 @@ export default function JobCreationPage() {
 
     setIsLoading(true);
 
-    // Filter to only included questions with content
+    // Filter to only included questions with content and format for the API
     const includedQuestions = state.questions
       .filter((q) => q.status === "included" && q.content.trim() !== "")
       .map((q, index) => ({
-        content: q.content,
-        required: false,
+        text: q.content,
+        type: "text" as const,
+        duration: 2,
         order: index,
         source: q.type === "generated" ? "ai" : "custom",
       }));
