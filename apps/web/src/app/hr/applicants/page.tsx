@@ -1,10 +1,12 @@
 "use client";
 
-import { mockApplicants, mockJobs } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { mockApplicants, updateApplicantStatus, Applicant } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Check, X, PlayCircle, FileText, MoreHorizontal, Filter, ArrowUpDown, Sparkles, BrainCircuit, Download } from "lucide-react";
 import Link from "next/link";
 
@@ -17,6 +19,60 @@ const avatars = [
 ];
 
 export default function HRApplicantListings() {
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "approve" | "reject" | null;
+    applicantId: string;
+    applicantName: string;
+  }>({ type: null, applicantId: "", applicantName: "" });
+
+  useEffect(() => {
+    // Initialize with mock data
+    setApplicants(mockApplicants);
+  }, []);
+
+  const showApproveConfirm = (applicantId: string, applicantName: string) => {
+    setConfirmAction({ type: "approve", applicantId, applicantName });
+  };
+
+  const showRejectConfirm = (applicantId: string, applicantName: string) => {
+    setConfirmAction({ type: "reject", applicantId, applicantName });
+  };
+
+  const confirmApprove = () => {
+    if (confirmAction.applicantId) {
+      updateApplicantStatus(confirmAction.applicantId, "approved");
+      // Update local state to trigger re-render
+      setApplicants(prev =>
+        prev.map(applicant =>
+          applicant.id === confirmAction.applicantId
+            ? { ...applicant, status: "approved" as const }
+            : applicant
+        )
+      );
+      setConfirmAction({ type: null, applicantId: "", applicantName: "" });
+    }
+  };
+
+  const confirmReject = () => {
+    if (confirmAction.applicantId) {
+      updateApplicantStatus(confirmAction.applicantId, "rejected");
+      // Update local state to trigger re-render
+      setApplicants(prev =>
+        prev.map(applicant =>
+          applicant.id === confirmAction.applicantId
+            ? { ...applicant, status: "rejected" as const }
+            : applicant
+        )
+      );
+      setConfirmAction({ type: null, applicantId: "", applicantName: "" });
+    }
+  };
+
+  const cancelConfirm = () => {
+    setConfirmAction({ type: null, applicantId: "", applicantName: "" });
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 px-4 py-8">
        {/* Header Section */}
@@ -98,7 +154,7 @@ export default function HRApplicantListings() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockApplicants.map((applicant, i) => (
+            {applicants.map((applicant, i) => (
               <TableRow key={applicant.id} className="group hover:bg-secondary/30 border-border transition-colors">
                 <TableCell className="pl-6 py-4">
                   <div className="flex items-center gap-3">
@@ -155,23 +211,43 @@ export default function HRApplicantListings() {
                       ? 'bg-green-500/10 text-green-500 border-green-500/20'
                       : applicant.status === 'rejected'
                       ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                      : applicant.status === 'interview_completed'
+                      ? 'bg-purple-500/10 text-purple-500 border-purple-500/20'
                       : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                   }`}>
-                    {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+                    {applicant.status === 'interview_completed' ? 'Interview Completed' : applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right pr-6">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <Button size="sm" variant="secondary" className="h-8 w-8 p-0 hover:bg-foreground hover:text-background transition-colors">
-                       <PlayCircle className="h-4 w-4" />
-                     </Button>
-                     <div className="w-px h-4 bg-border/50 mx-1 self-center" />
-                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-500 hover:bg-green-500/10">
-                       <Check className="h-4 w-4" />
-                     </Button>
-                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10">
-                       <X className="h-4 w-4" />
-                     </Button>
+                  <div className="flex justify-end gap-2">
+                     {applicant.status === 'interview_completed' ? (
+                       <>
+                         <Button
+                          size="sm"
+                          variant="default"
+                          className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white"
+                          onClick={() => showApproveConfirm(applicant.id, applicant.name)}
+                        >
+                           <Check className="h-4 w-4 mr-1" />
+                           Approve
+                         </Button>
+                         <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                          onClick={() => showRejectConfirm(applicant.id, applicant.name)}
+                         >
+                           <X className="h-4 w-4 mr-1" />
+                           Reject
+                         </Button>
+                       </>
+                     ) : (
+                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Button size="sm" variant="secondary" className="h-8 w-8 p-0 hover:bg-foreground hover:text-background transition-colors">
+                           <PlayCircle className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -179,6 +255,62 @@ export default function HRApplicantListings() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Confirmation Modal */}
+      <Dialog open={confirmAction.type !== null} onOpenChange={cancelConfirm}>
+        <DialogContent className="sm:max-w-[425px] !duration-0 !transition-none">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {confirmAction.type === "approve" ? (
+                <>
+                  <Check className="h-5 w-5 text-emerald-500" />
+                  Approve Candidate
+                </>
+              ) : (
+                <>
+                  <X className="h-5 w-5 text-red-500" />
+                  Reject Candidate
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction.type === "approve" ? (
+                <>
+                  Are you sure you want to approve <span className="font-semibold">{confirmAction.applicantName}</span>?
+                  <br />
+                  This will move them forward in the hiring process.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to reject <span className="font-semibold">{confirmAction.applicantName}</span>?
+                  <br />
+                  This will remove them from consideration for this position.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelConfirm}>
+              Cancel
+            </Button>
+            {confirmAction.type === "approve" ? (
+              <Button
+                onClick={confirmApprove}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+              >
+                Approve Candidate
+              </Button>
+            ) : (
+              <Button
+                onClick={confirmReject}
+                variant="destructive"
+              >
+                Reject Candidate
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

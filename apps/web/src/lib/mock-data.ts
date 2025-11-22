@@ -72,7 +72,7 @@ export interface Applicant {
   email: string;
   role: string;
   matchScore: number;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "interview_completed";
   jobId: string;
 }
 
@@ -801,7 +801,98 @@ const interviews: Record<string, Interview> = {
   },
 };
 
-const applicants: Record<string, Applicant> = {};
+const applicants: Record<string, Applicant> = {
+  "applicant-1": {
+    id: "applicant-1",
+    name: "Sarah Jenkins",
+    email: "sarah.jenkins@email.com",
+    role: "Senior Frontend Developer",
+    matchScore: 98,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+  "applicant-2": {
+    id: "applicant-2",
+    name: "Michael Chen",
+    email: "michael.chen@email.com",
+    role: "Full Stack Engineer",
+    matchScore: 92,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+  "applicant-3": {
+    id: "applicant-3",
+    name: "Emily Rodriguez",
+    email: "emily.rodriguez@email.com",
+    role: "Frontend Developer",
+    matchScore: 87,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+  "applicant-4": {
+    id: "applicant-4",
+    name: "David Kim",
+    email: "david.kim@email.com",
+    role: "React Developer",
+    matchScore: 78,
+    status: "pending",
+    jobId: "job-1",
+  },
+  "applicant-5": {
+    id: "applicant-5",
+    name: "Jessica Taylor",
+    email: "jessica.taylor@email.com",
+    role: "Senior React Developer",
+    matchScore: 95,
+    status: "approved",
+    jobId: "job-1",
+  },
+  "applicant-6": {
+    id: "applicant-6",
+    name: "Robert Anderson",
+    email: "robert.anderson@email.com",
+    role: "Frontend Engineer",
+    matchScore: 83,
+    status: "pending",
+    jobId: "job-1",
+  },
+  "applicant-7": {
+    id: "applicant-7",
+    name: "Amanda Foster",
+    email: "amanda.foster@email.com",
+    role: "UI Developer",
+    matchScore: 91,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+  "applicant-8": {
+    id: "applicant-8",
+    name: "Christopher Lee",
+    email: "chris.lee@email.com",
+    role: "JavaScript Developer",
+    matchScore: 76,
+    status: "rejected",
+    jobId: "job-1",
+  },
+  "applicant-9": {
+    id: "applicant-9",
+    name: "Rachel Martinez",
+    email: "rachel.martinez@email.com",
+    role: "Senior Frontend Engineer",
+    matchScore: 89,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+  "applicant-10": {
+    id: "applicant-10",
+    name: "Daniel Thompson",
+    email: "daniel.thompson@email.com",
+    role: "React Frontend Developer",
+    matchScore: 85,
+    status: "interview_completed",
+    jobId: "job-1",
+  },
+};
 
 // =============================================================================
 // Data Access Functions (will be replaced by Prisma/database calls)
