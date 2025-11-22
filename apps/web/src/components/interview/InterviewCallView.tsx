@@ -491,31 +491,32 @@ function InterviewCallContent({
               )}
             </div>
 
-            {/* Floating Controls */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-2xl z-10">
+            {/* Floating Controls - bottom right */}
+            <div className="absolute bottom-4 right-4 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur-xl border border-white/10 shadow-xl z-10">
               <Button
-                variant={isMicMuted ? "destructive" : "secondary"}
+                variant={isMicMuted ? "destructive" : "ghost"}
                 size="icon"
-                className="h-12 w-12 rounded-xl transition-all border border-white/20"
+                className={`h-8 w-8 rounded-md transition-colors ${!isMicMuted && 'text-white/80 hover:text-white hover:bg-white/10'}`}
                 onClick={handleToggleMic}
               >
-                {isMicMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                {isMicMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
               </Button>
               <Button
-                variant={isCameraMuted ? "destructive" : "secondary"}
+                variant={isCameraMuted ? "destructive" : "ghost"}
                 size="icon"
-                className="h-12 w-12 rounded-xl border border-white/20"
+                className={`h-8 w-8 rounded-md transition-colors ${!isCameraMuted && 'text-white/80 hover:text-white hover:bg-white/10'}`}
                 onClick={handleToggleCamera}
               >
-                {isCameraMuted ? <VideoOff className="h-5 w-5" /> : <VideoIcon className="h-5 w-5" />}
+                {isCameraMuted ? <VideoOff className="h-3.5 w-3.5" /> : <VideoIcon className="h-3.5 w-3.5" />}
               </Button>
-              <div className="w-px h-8 bg-white/20 mx-2" />
+              <div className="w-px h-5 bg-white/20" />
               <Button
-                variant="destructive"
-                className="h-12 px-6 rounded-xl font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-md text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-colors"
                 onClick={handleEndCall}
               >
-                <PhoneOff className="mr-2 h-4 w-4" /> End Session
+                <PhoneOff className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
