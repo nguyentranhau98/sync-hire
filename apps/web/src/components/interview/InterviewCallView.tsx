@@ -112,6 +112,8 @@ function InterviewCallContent({
   // Track caption segments to handle Stream's segmented delivery
   // Key: speakerId, Value: { startTime, lastText }
   const captionSegmentsRef = useRef<Map<string, { startTime: string; lastText: string }>>(new Map());
+  // Track last logged speaker for batched logging
+  const lastLoggedSpeakerRef = useRef<string | null>(null);
 
   // Build transcript from closed captions - streaming updates
   useEffect(() => {
@@ -142,23 +144,26 @@ function InterviewCallContent({
         return;
       }
 
-      console.log('📝 Caption:', caption.user.name, isNewSegment ? '[NEW]' : '[UPD]', text.substring(0, 40) + '...');
-
       // Update segment tracking
       captionSegmentsRef.current.set(speakerId, { startTime, lastText: text });
 
       setTranscript(prev => {
         const lastMessage = prev[prev.length - 1];
+        const speakerIcon = isAI ? '🤖' : '👤';
+        const speakerName = isAI ? 'AI' : caption.user.name || 'User';
 
         // Same speaker
         if (lastMessage && lastMessage.speakerId === speakerId) {
           if (isNewSegment) {
             // New segment from same speaker - APPEND to existing message
             const updated = [...prev];
+            const newText = lastMessage.text + ' ' + text;
             updated[updated.length - 1] = {
               ...lastMessage,
-              text: lastMessage.text + ' ' + text,
+              text: newText,
             };
+            // Log continuation
+            console.log(`📝 ${speakerIcon} ${speakerName}: ...${text}`);
             return updated;
           } else {
             // Same segment - text is cumulative, check if it's an extension
@@ -176,6 +181,12 @@ function InterviewCallContent({
         }
 
         // Different speaker - add new message
+        // Log speaker change
+        if (lastLoggedSpeakerRef.current !== speakerId) {
+          console.log(`📝 ${speakerIcon} ${speakerName}: ${text}`);
+          lastLoggedSpeakerRef.current = speakerId;
+        }
+
         const newId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         return [...prev, {
           id: newId,
