@@ -41,8 +41,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use stable call ID based on interview ID (same ID for reconnections)
-    const callId = `interview-${interviewId}`;
+    // Use interview ID directly as call ID (already formatted as "interview-1", etc.)
+    const callId = interviewId;
 
     // Create the Stream call (getOrCreate returns existing call if it exists)
     const streamClient = getStreamClient();

@@ -2,9 +2,9 @@
 
 /**
  * Custom hook to manage interview call lifecycle
- * Handles initialization, joining, and cleanup
+ * Simplified: join happens on user action (button click), not on mount
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Call, useStreamVideoClient } from '@stream-io/video-react-sdk';
 import { useStartInterview } from '@/lib/hooks/use-interview';
 
@@ -12,7 +12,7 @@ interface UseInterviewCallParams {
   interviewId: string;
   candidateId: string;
   candidateName: string;
-  enabled: boolean; // Only start when name is provided
+  enabled: boolean; // Only start when user clicks "Join"
 }
 
 export function useInterviewCall({
@@ -24,45 +24,34 @@ export function useInterviewCall({
   const client = useStreamVideoClient();
   const [call, setCall] = useState<Call | null>(null);
   const [callEnded, setCallEnded] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const startInterviewMutation = useStartInterview();
-  const mutationStartedRef = useRef(false); // Persists across StrictMode remounts
-  const joinedRef = useRef(false); // Track if we've successfully joined
 
   useEffect(() => {
-    // Guard: don't run if not enabled, no client, already have call, or already started
-    if (!enabled || !client || call || mutationStartedRef.current || joinedRef.current) {
+    // Only run when enabled and we have a client, and haven't already joined
+    if (!enabled || !client || call || isJoining) {
       return;
     }
 
-    // Mark mutation as started IMMEDIATELY (before any async work)
-    // This prevents double-calls in StrictMode
-    mutationStartedRef.current = true;
-
-    let cancelled = false;
-
-    const initializeInterview = async () => {
-      // Don't check cancelled at the start - in StrictMode, cancelled may be set
-      // before this async function body even executes. We only check cancelled
-      // after joining the call, where we can properly clean up.
+    const joinInterview = async () => {
+      setIsJoining(true);
 
       try {
         console.log('🚀 Starting interview for:', candidateName);
 
-        // Start interview and get call ID (idempotent - uses getOrCreate)
+        // Start interview and get call ID
         const data = await startInterviewMutation.mutateAsync({
           interviewId,
           candidateId,
           candidateName,
         });
 
-        // Don't check cancelled here - once mutation succeeds, complete the join
-        // The mutation is idempotent, so we should finish what we started
         console.log('📞 Interview started, joining call:', data.callId);
 
         // Create the call object
         const videoCall = client.call('default', data.callId);
 
-        // Enable camera and microphone BEFORE joining (per Stream.io docs)
+        // Enable camera and microphone BEFORE joining
         try {
           await videoCall.camera.enable();
         } catch (camErr) {
@@ -74,18 +63,8 @@ export function useInterviewCall({
           console.warn('⚠️ Could not enable microphone:', micErr);
         }
 
-        // Then join the call
+        // Join the call
         await videoCall.join({ create: true, video: true });
-
-        // Mark as joined - prevents re-running even if StrictMode remounts
-        joinedRef.current = true;
-
-        if (cancelled) {
-          console.log('⚠️ Cancelled after joining, leaving call');
-          await videoCall.leave();
-          joinedRef.current = false;
-          return;
-        }
 
         // Listen for call ended events
         videoCall.on('call.ended', () => {
@@ -99,35 +78,27 @@ export function useInterviewCall({
         });
 
         setCall(videoCall);
+        setIsJoining(false);
         console.log('✅ Successfully joined call');
       } catch (err) {
         console.error('Error initializing interview:', err);
-        // Reset on error so user can retry
-        if (!cancelled) {
-          mutationStartedRef.current = false;
-        }
+        setIsJoining(false);
       }
     };
 
-    initializeInterview();
-
-    // Cleanup - only set cancelled flag, don't reset refs
-    // This prevents double API calls in StrictMode
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, client, call, interviewId, candidateId, candidateName]);
+    joinInterview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, client]);
 
   return {
     call,
     callEnded,
-    isLoading: startInterviewMutation.isPending || (!call && enabled && !startInterviewMutation.isError),
+    isLoading: isJoining || startInterviewMutation.isPending,
     error: startInterviewMutation.error,
     reset: () => {
       setCall(null);
       setCallEnded(false);
-      mutationStartedRef.current = false;
-      joinedRef.current = false;
+      setIsJoining(false);
       startInterviewMutation.reset();
     },
   };

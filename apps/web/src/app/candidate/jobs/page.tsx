@@ -1,23 +1,21 @@
 "use client";
 
-import { getAllInterviews, getJobById, getUserById } from "@/lib/mock-data";
-import { Button } from "@/components/ui/button";
+import { getAllInterviews, getJobById, getDemoUser } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, ArrowRight, Search, Building2, Sparkles, Zap, Clock, CheckCircle2, Play } from "lucide-react";
+import { MapPin, ArrowRight, Building2, Sparkles, Clock, CheckCircle2, Play } from "lucide-react";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
 
 export default function CandidateJobListings() {
-  // Get all interviews with their job details
+  // Get demo user and their interviews
+  const demoUser = getDemoUser();
   const allInterviews = getAllInterviews();
-  // Show first 6 interviews for display
-  const interviews = allInterviews.slice(0, 6).map((interview) => {
+
+  // Get interviews with job details
+  const interviews = allInterviews.map((interview) => {
     const job = getJobById(interview.jobId);
-    const candidate = getUserById(interview.candidateId);
     return {
       ...interview,
       job,
-      candidate,
     };
   });
 
@@ -29,37 +27,20 @@ export default function CandidateJobListings() {
 
       <div className="max-w-6xl mx-auto space-y-16 py-20 px-6 relative z-10">
 
-        {/* Dynamic Hero Section */}
-        <div className="space-y-8 text-center max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+        {/* Hero Section */}
+        <div className="space-y-6 text-center max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-white/10 backdrop-blur-sm">
             <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-            <span className="text-xs font-medium text-muted-foreground">Next-Gen AI Recruiting</span>
+            <span className="text-xs font-medium text-muted-foreground">Welcome, {demoUser.name}</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-medium tracking-tight leading-tight">
-            Interview once. <br/>
-            <span className="ai-gradient-text font-semibold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">Get matched instantly.</span>
+          <h1 className="text-4xl md:text-5xl font-medium tracking-tight leading-tight">
+            Your Engineering Interviews
           </h1>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Our AI analyzes your conversation, coding skills, and soft skills to match you with the world&apos;s top engineering teams.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Practice AI-powered interviews for top engineering roles. Each interview is tailored to the specific position.
           </p>
-
-          <div className="max-w-xl mx-auto relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-blue-500/20 rounded-xl blur-lg opacity-50 group-hover:opacity-100 transition duration-500" />
-            <div className="relative flex gap-2 p-2 bg-background/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by role (e.g. Senior React Engineer)..."
-                  className="pl-10 h-11 bg-transparent border-transparent focus:bg-transparent focus:ring-0 text-base"
-                />
-              </div>
-              <Button size="lg" className="h-11 px-8 bg-foreground text-background hover:bg-foreground/90 transition-all">
-                Search
-              </Button>
-            </div>
-          </div>
         </div>
 
         {/* Interactive Interview Cards */}
@@ -97,10 +78,6 @@ export default function CandidateJobListings() {
                       <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-blue-400 transition-colors">
                         {interview.job?.title || "Interview"}
                       </h3>
-
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {interview.candidate?.name || "Candidate"}
-                      </p>
 
                       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-6">
                         <span className="flex items-center gap-1.5">
