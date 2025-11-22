@@ -33,14 +33,12 @@ interface JobCreationState {
     order: number;
   }>;
   acceptedSuggestions: string[]; // Track accepted suggestions by index
-  createdJob?: any; // Store created job data
 }
 
 export default function JobCreationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [createdJobId, setCreatedJobId] = useState<string | null>(null);
 
   const [state, setState] = useState<JobCreationState>({
     extractedData: null,
@@ -197,9 +195,8 @@ export default function JobCreationPage() {
       }
 
       const result = await response.json();
-      setState(prev => ({ ...prev, createdJob: result.data }));
-      setCreatedJobId(result.data.id);
       toast.success("Job posted successfully!");
+      router.push(`/hr/jobs/${result.data.id}`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to create job";
@@ -210,110 +207,6 @@ export default function JobCreationPage() {
   };
 
 
-  if (createdJobId && state.createdJob) {
-    // Job creation confirmation view
-    return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Job Created Successfully!
-            </h1>
-            <p className="text-muted-foreground">
-              Your job posting has been published and is now live
-            </p>
-          </div>
-
-          <Card className="p-8">
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold text-foreground mb-4">
-                  {state.createdJob.title}
-                </h2>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Location:</span>
-                    <span className="ml-2 font-medium">{state.extractedData?.location}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="ml-2 font-medium">{state.extractedData?.employmentType}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Seniority:</span>
-                    <span className="ml-2 font-medium">{state.extractedData?.seniority}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>
-                    <span className="ml-2 font-medium text-green-600">{state.createdJob.status}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Job Description</h3>
-                <div className="bg-secondary/20 p-4 rounded-lg">
-                  <p className="whitespace-pre-wrap">
-                    {state.extractedData?.responsibilities.join("\n")}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Requirements</h3>
-                <div className="bg-secondary/20 p-4 rounded-lg">
-                  <ul className="list-disc list-inside space-y-1">
-                    {state.extractedData?.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {state.customQuestions.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Screening Questions ({state.customQuestions.length})</h3>
-                  <div className="space-y-2">
-                    {state.customQuestions.map((question, index) => (
-                      <div key={index} className="bg-secondary/20 p-3 rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium">{question.content}</p>
-                            <div className="flex gap-2 mt-1">
-                              {question.required && <Badge variant="secondary">Required</Badge>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-4 pt-4">
-                <Button
-                  onClick={() => router.push(`/hr/jobs/${createdJobId}`)}
-                  className="flex-1"
-                >
-                  View Job Details
-                </Button>
-                <Button
-                  onClick={() => router.push("/hr/jobs/create")}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Create Another Job
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-6">
